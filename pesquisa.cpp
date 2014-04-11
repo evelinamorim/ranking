@@ -20,21 +20,27 @@
 #include <unordered_map>
 #include <cstring>
 #include <sstream>
+#include <ctime>
 
 #include "pesquisa.h"
 #include "CollectionReader.h"
 #include "util.h"
+#include "ranking.h"
 
 #define INTERSECAO 1
 #define UNIAO 2
 
+#define BM25CODIGO 1
+#define VECTORCODIGO 2
+
 using namespace std;
 using namespace RICPNS;
 
-const string Pesquisa::nome_arquivo_vocabulario = "voc.txt";
-const string Pesquisa::nome_arquivo_indice = "index.bin";
+const string Pesquisa::nome_arquivo_vocabulario = "../voc_compacta.txt";
+const string Pesquisa::nome_arquivo_indice = "../index_compacta.bin";
 
-Pesquisa::Pesquisa(bool compacta){
+Pesquisa::Pesquisa(bool compacta,int rankopt){
+    clock_t  t;
     col = new Colecao(compacta);
 
     if (compacta){
@@ -43,25 +49,27 @@ Pesquisa::Pesquisa(bool compacta){
 	leitura = new LeNormal(nome_arquivo_indice);
     }
 
+    if (rankopt == BM25CODIGO){
+	rank = new BM25();
+    }
+
+    if (rankopt == VECTORCODIGO){
+	rank = new Vetorial();
+    }
+    t = clock();
     posicoes_palavras = col->carrega_vocabulario(nome_arquivo_vocabulario);
+    t = clock() - t;
+    cout << "Tempo Pesquisa::carrega_vocabulario: "<< ((float)t/CLOCKS_PER_SEC) << "s" << endl;
+
     
 }
 
 vector<string> Pesquisa::processa_consulta(string consulta,int& tipo_consulta){
     //vetor vazio se houver problema com a consulta
-    stringstream ss(consulta);
     vector<string> lista_consulta;
-    string palavra;
 
-    while(ss>>palavra){
-	converteParaMinusculo(palavra);
-	if (palavra == "and"){
-	    tipo_consulta = INTERSECAO;
-	}else{
-	    if (palavra == "or") tipo_consulta = UNIAO;
-	    else lista_consulta.push_back(palavra);
-	}
-    }
+    tokenizar(consulta,lista_consulta);
+
     return lista_consulta;
 }
 
@@ -88,7 +96,7 @@ void Pesquisa::intersecao(unordered_map<unsigned int,vector<unsigned int> >& r1,
 }
 
 
-unordered_map<unsigned int,vector<unsigned int> > Pesquisa::executa(string palavra){
+unordered_map<unsigned int,vector<unsigned int> > Pesquisa::executa_termo(string palavra){
     int i = col->pega_lexico_inteiro(palavra);
     int pos_arquivo,freq,final_arquivo;
     unsigned int doc;
@@ -101,7 +109,8 @@ unordered_map<unsigned int,vector<unsigned int> > Pesquisa::executa(string palav
 	arquivo.close();
     }else  pos_arquivo = posicoes_palavras[i];
 
-    vector<unsigned int> v;
+    deque<unsigned int> v;
+    vector<unsigned int> tmp;
 
     leitura->inicia_conta_bits(posicoes_palavras[i-1]);
 
@@ -116,9 +125,11 @@ unordered_map<unsigned int,vector<unsigned int> > Pesquisa::executa(string palav
 
 	  v.clear();
           final_arquivo = leitura->ler_tripla(v,freq);
-          resultado[doc] = v;
+	  copy(v.begin(), v.end(), back_inserter(tmp));
+          resultado[doc] = tmp;
 
 	  v.clear();
+	  tmp.clear();
     }
 
 
@@ -126,19 +137,89 @@ unordered_map<unsigned int,vector<unsigned int> > Pesquisa::executa(string palav
 
 }
 
-void Pesquisa::imprime_docs_resultados(unordered_map<unsigned int,vector<unsigned int> > resultado,string dir_entrada,string nome_indice)
+vector<resultado_pesquisa_t> Pesquisa::executa(string palavra){
+
+    vector<string> consulta;
+    int tipo_consulta;
+    consulta =  processa_consulta(palavra,tipo_consulta);
+
+    for_each(consulta.begin(),consulta.end(),imprime_string);
+    cout<< endl;
+
+    unordered_map<unsigned int,vector<unsigned int> > resultado_atual,resultado_antigo;
+    
+    vector<string>::iterator it_consulta = consulta.begin();
+    vector<string>::iterator it_consulta_fim = consulta.end();
+
+    unordered_map<unsigned int,vector<int> > resultado;
+
+    while(it_consulta!=it_consulta_fim){
+	resultado_atual = executa_termo(*it_consulta);
+	cout<<"Consulta do termo "<<*it_consulta<<" possui "<<resultado_atual.size()<<" documentos."<<endl;
+
+	if (resultado_antigo.size()!=0){ 
+	    intersecao(resultado_atual,resultado_antigo);
+
+	    unordered_map<unsigned int,vector<int> >::iterator it_resultado;
+
+	    //aqui estou apagando documentos nao existentes mais por nao possuirem os 
+	    //o termo de pesquisa atual
+	    vector<unsigned int> docs_irrelevantes;
+	    for (it_resultado=resultado.begin();it_resultado!=resultado.end();it_resultado++){
+		  if (resultado_antigo.find(it_resultado->first) == resultado_antigo.end()){
+		      docs_irrelevantes.push_back(it_resultado->first);
+		  }
+	    }
+
+	    vector<unsigned int>::iterator it_irr;
+	    for(it_irr=docs_irrelevantes.begin();it_irr!=docs_irrelevantes.end();it_irr++){
+		resultado.erase(*it_irr);
+	    }
+
+	    unordered_map<unsigned int,vector<unsigned int> >::iterator it_atual;
+	    //incluindo a frequencia de termos atuais
+	    for (it_atual=resultado_atual.begin();it_atual!=resultado_atual.end();it_atual++){
+		resultado[it_atual->first].push_back(it_atual->second.size());
+	    }
+
+	}else{
+	    unordered_map<unsigned int,vector<unsigned int> >::iterator it_resultado;
+	    for (it_resultado=resultado_atual.begin();it_resultado!=resultado_atual.end();it_resultado++)
+	          resultado[it_resultado->first].push_back(it_resultado->second.size());
+	}
+
+	//TODO: sera que copia?
+	resultado_antigo = resultado_atual;
+	it_consulta++;
+    }
+
+    //em resultado1 fica os documentos restantes que contem todos os termos
+    //Entao agora calcular ranking
+    rank->inicia_lista_docs(resultado);
+    //TODO: talvez deixar isso na classe
+    unordered_map<unsigned int,double> acc;
+    vector<resultado_pesquisa_t> ordem =  rank->computa(acc);
+
+    return ordem;
+}
+
+void Pesquisa::imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,string dir_entrada,string nome_indice)
 {
     //dado o resultado de uma consulta. Percorre os documentos da base 
     //para imprimir aqueles do resultado
     CollectionReader* leitor = new CollectionReader(dir_entrada,nome_indice);
     Document doc;
+    unordered_map<unsigned int,string> listaLinks;
+    queue<unsigned int> docid;
+
+    vector<
 
     unsigned int i = 1;
     while(leitor->getNextDocument(doc)){
 
-	if (resultado.find(i)!=resultado.end()){
-	   cout << "DOCUMENTO " << i << endl;
-	   cout << "[" << doc.getURL() << "]" << endl;
+	if (resultado){
+	   //cout << "DOCUMENTO " << i << endl;
+	   //cout << "[" << doc.getURL() << "]" << endl;
 	  // cout << doc.getText() << endl << endl;
 	}
 	///tree<htmlcxx::HTML::Node> dom = parser.parseTree(doc.getText());
@@ -150,6 +231,7 @@ void Pesquisa::imprime_docs_resultados(unordered_map<unsigned int,vector<unsigne
  
 
 int main(int argc,char** argv){
+    //TODO: mudar esta main. Agora tem ranking
     Pesquisa* p;
     bool compacta = false;
     string dir_entrada = argv[1];
@@ -159,30 +241,14 @@ int main(int argc,char** argv){
 	if (strncmp(argv[3],"-c",2)==0) compacta = true;
     }
 
-   p = new Pesquisa(compacta);
-   vector<string> consulta;
-   int tipo_consulta;
+   int rankopt = VECTORCODIGO;
+   p = new Pesquisa(compacta,rankopt);
    string palavra;
-   unordered_map<unsigned int,vector<unsigned int> > resultado,resultado1,resultado2;
 
     while (getline(cin,palavra)){
-	cout << "Pesquisa da palavras: " << palavra << endl;
-	consulta = p->processa_consulta(palavra,tipo_consulta);
-
-	if (consulta.size()>1){
-            resultado1 = p->executa(consulta[0]);
-            resultado2 = p->executa(consulta[1]);
-	    if (tipo_consulta == INTERSECAO){
-	       p->intersecao(resultado1,resultado2);
-               p->imprime_docs_resultados(resultado2,dir_entrada,nome_indice);
-	    }else{
-               p->imprime_docs_resultados(resultado1,dir_entrada,nome_indice);
-               p->imprime_docs_resultados(resultado2,dir_entrada,nome_indice);
-	   }
-	}else{
-            resultado = p->executa(consulta[0]);
-            p->imprime_docs_resultados(resultado,dir_entrada,nome_indice);
-	}
+	cout << "Pesquisa das palavras: " << palavra << endl;
+	p->executa(palavra);
+        cout<<"teste4"<<endl;
 	cout << endl;
     }
     return 0;

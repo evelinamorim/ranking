@@ -24,6 +24,9 @@
 
 using namespace std;
 
+void imprime_string(string s){
+    cout<<s<<" ";
+}
 
 void converteParaMinusculo(string& s){
     /* COnverte uma string para minusculo */
@@ -41,7 +44,7 @@ void converteParaMinusculo_char(char* s){
 }
 
 bool ehPontuacao(char c){
-    return (c == ';' || c == ':' || c == '.' || c == '?' || c == ',' || c == '!' || c==')' || c=='(' || c == '\n' || c == '\t' || c == '\r' || c == '-');
+    return (c == ';' || c == ':' || c == '.' || c == '?' || c == ',' || c == '!' || c==')' || c=='(' || c == '\n' || c == '\t' || c == '\r' || c == '-' || c=='"');
 }
 
 void tokenizar(string s,vector<string>& v){
@@ -66,6 +69,9 @@ void tokenizar(string s,vector<string>& v){
 	}
 	it++;
     }
+
+    //no caso da ultima palavra nao ter sido empilhada
+    if (palavra.size()!=0) v.push_back(palavra);
 
 }
 
@@ -226,4 +232,61 @@ unsigned int gamma_para_int(deque<unsigned int>& x,unsigned int& nx,int pos){
 	else x.pop_front();
     }
     return numeroint;
+}
+
+vector<float> frequencia_termo(unordered_map<unsigned int,vector<unsigned int> > lista_docs){
+    //em uma lista de de termos eh possivel computar a frequencia deste termo 
+    //em cada documento
+    vector<float> v;
+    v.reserve(lista_docs.size());
+
+    unordered_map<unsigned int,vector<unsigned int> >::iterator it_docs = lista_docs.begin();
+    unordered_map<unsigned int,vector<unsigned int> >::iterator it_docs_fim = lista_docs.end();
+
+    while(it_docs!=it_docs_fim){
+	float tf = 1 + log(it_docs->second.size());
+	v.push_back(tf);
+	it_docs++;
+    }
+
+    return v;
+}
+
+float frequencia_inversa(const int num_docs,unordered_map<unsigned int,vector<unsigned int> > lista_docs){
+    //contar a frequencia do termo na colecao
+    unordered_map<unsigned int,vector<unsigned int> >::iterator it_docs = lista_docs.begin();
+    unordered_map<unsigned int,vector<unsigned int> >::iterator it_docs_fim = lista_docs.end();
+
+    float ni = 0;
+    while(it_docs!=it_docs_fim){
+	ni += it_docs->second.size();
+	it_docs++;
+    }
+
+    return log (num_docs/lista_docs.size());
+}
+
+unsigned int produto_vetorial(vector<unsigned int> v1,vector<unsigned int> v2){
+    unsigned int resultado;
+
+    int n = v1.size();
+    for(int i= 0;i<n;i++){
+	resultado += v1.at(i)*v2.at(i);
+    }
+
+    return resultado;
+}
+
+unsigned int norma(vector<unsigned int> v){
+    unsigned int resultado = 0;
+
+    vector<unsigned int>::iterator it = v.begin();
+    vector<unsigned int>::iterator it_fim = v.end();
+
+    while (it!=it_fim){
+	resultado += (*it)*(*it);
+	it++;
+    }
+
+    return sqrt(resultado);
 }

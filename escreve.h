@@ -35,6 +35,7 @@ class Escreve{
     string nome_arquivo;
     ofstream arquivo;
 
+    unsigned long int tmp_ntripla;
     public:
     Escreve(string narquivo);
     virtual ~Escreve(){};
@@ -43,6 +44,8 @@ class Escreve{
     unsigned long int pega_conta_bits();
     string pega_nome_arquivo();
     void inicia_conta_bits(unsigned long int cb);
+    void inicia_ntripla(unsigned long int x);
+    unsigned long int pega_ntripla();
 
     //metodos de escrita
     streampos escreve_tripla(vector<unsigned int> v);

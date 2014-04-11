@@ -114,11 +114,12 @@ class Colecao{
     void armazena_termos_doc(unordered_map<int,vector<int> >& termos_pos,int doc);
     const string pega_nome_arquivo_indice();
     int pega_tamanho_vocabulario();
+    int pega_tamanho_vocabulario_invertido();
 
     void atualiza_vocabulario(int lex,unsigned long int pos);
     void escreve_vocabulario();
-    vector<int>  carrega_vocabulario(const string arquivo_vocabulario);
-    int pega_lexico_inteiro(string p);
+    vector<unsigned int>  carrega_vocabulario(const string arquivo_vocabulario);
+    unsigned long int pega_lexico_inteiro(string p);
     char*  pega_lexico(int p);
 
 };

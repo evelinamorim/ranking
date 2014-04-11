@@ -32,14 +32,18 @@ class Le{
     unsigned long int conta_bits;
     streampos tamanho_arquivo;
 
+    unsigned long int tmp_ntripla;
+
     public:
     Le(string narquivo);
     virtual ~Le(){};
     //metodos de get's e set's
     void inicia_nome_arquivo(string narquivo);
     void inicia_tamanho_arquivo();
-    void inicia_conta_bits(unsigned int cb);
+    void inicia_conta_bits(unsigned long int cb);
+    void inicia_ntripla(unsigned long int x);
     unsigned long int pega_conta_bits();
+    unsigned long int pega_ntripla();
 
     int ler_tripla(deque<unsigned int>& v,int nnum);
     int ler_tripla_pos(deque<unsigned int>& v,int pos);

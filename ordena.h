@@ -49,7 +49,7 @@ class Ordena{
     int conta_triplas;
     streampos tamanho_arquivo;
 
-    queue<tripla_t> *buffer_ordenacao;
+    deque<tripla_t> *buffer_ordenacao;
 
     public:
     Ordena(string narquivo,bool compacta);

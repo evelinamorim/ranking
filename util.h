@@ -23,6 +23,7 @@
 #include <vector>
 #include <sys/stat.h>
 #include <cmath>
+#include <unordered_map>
 
 #ifndef __UTIL_H_
 #define __UTIL_H_
@@ -36,6 +37,8 @@
 #define TAM_BUFFER_ORD 100000
 
 using namespace std;
+
+void imprime_string(string s);
 
 void converteParaMinusculo_char(char* s);
 void converteParaMinusculo(string& s);
@@ -54,5 +57,13 @@ void para_codigo_gamma(unsigned int x,unsigned long int& y,unsigned int &ny);
 unsigned int unario_para_int(deque<unsigned int>& x,int pos);
 
 unsigned int gamma_para_int(deque<unsigned int>& x,unsigned int& nx,int pos);
+
+/* funcoes para operacao de ranking */
+vector<float> frequencia_termo(unordered_map<unsigned int,vector<unsigned int> > lista_docs);
+float frequencia_inversa(const int num_docs,unordered_map<unsigned int,vector<unsigned int> > lista_docs);
+
+/* funcoes para operacao em vetor */
+unsigned int produto_vetorial(vector<unsigned int> v1,vector<unsigned int> v2);
+unsigned int norma(vector<unsigned int> v);
 
 #endif

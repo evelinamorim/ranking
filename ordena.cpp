@@ -31,7 +31,9 @@
 
 using namespace std;
 
-int teste[5]={0,0,0,0,0};
+int teste_conta[60];
+int ntriplas_global;
+int nrun_global;
 
 Ordena::Ordena(string narquivo,bool compacta){
     nome_arquivo = narquivo;
@@ -75,10 +77,17 @@ int Ordena::carrega_run(int& pos_arquivo){
     conta_bits.push_back(leitura->pega_conta_bits());
     deque<unsigned int> v;
     int i;
-
+    if (nrun_global == 60){
+    cout<<"carrega_run 60 comecao com "<<leitura->pega_conta_bits()<<endl;
+    }
+    leitura->inicia_ntripla(nrun_global);
     pos_arquivo = leitura->ler_tripla(v,3*TAMANHO_RUN);
+    if (nrun_global == 60){
+    cout<<"carrega_run 60 termina com "<<leitura->pega_conta_bits()<<endl;
+    }
     int n = (v.size()/3);
     for(i=0;i<n;i++){
+
 
 
 	run[i].lex = v.at(3*i);
@@ -192,22 +201,27 @@ void Ordena::ordena_todas_runs(unsigned long int* pos_prox){
 
      int pos_arquivo = 1;
      int i = 0;
-     int old_pos_prox = 0;
+     unsigned long int old_pos_prox = 0;
 
      while (pos_arquivo > 0){
-
+	 nrun_global = i;
          int tam_run = carrega_run(pos_arquivo);
-	 //Acho que esta ok aqui. Visto que as triplas estao ordenadas por run
-	 /*for (int i=0;i<tam_run;i++){
-	     cout << ">>> " << run[i].lex << " " << run[i].doc << " " << run[i].pos <<endl; 
-	 }*/
+         if (nrun_global == 60){
+	     cout<<"ordena_todas_runs 1: "<<conta_bits[60]<<" "<<tam_run<<" "<<TAM_BUFFER_ORD<<endl;
+	 }
+         //cout<<"RUN "<<i<<"  "<<tam_run<<" "<<pos_arquivo<<" "<<conta_triplas<<" "<<conta_bits[i]<<endl;
 	 ordena_run(tam_run);
+	 //Acho que esta ok aqui. Visto que as triplas estao ordenadas por run
+	 /* for (int j=0;j<tam_run;j++){
+	 if (run[j].lex>=3726028 && run[j].lex<=3726055){
+	     cout << ">>> " << run[j].lex << " " << run[j].doc << " " << run[j].pos <<" "<<j<<endl; }
+	 }*/
 
 	 pos_prox[i] = old_pos_prox;
 
 	 for(int j = 0;j<MIN(tam_run,TAM_BUFFER_ORD);j++){
 
-	     buffer_ordenacao[i].push(run[j]);
+	     buffer_ordenacao[i].push_back(run[j]);
 
 
 	     unsigned long int y;
@@ -224,10 +238,19 @@ void Ordena::ordena_todas_runs(unsigned long int* pos_prox){
 		pos_prox[i] += 96;
 	    }
 	 }
+         if (nrun_global == 60){
+	     cout<<"ordena_todas_runs 2: "<<conta_bits[60]<<" "<<pos_prox[60]<<" "<<escrita->pega_conta_bits_global()<<endl;
+	 }
+	 escrita->inicia_ntripla(i);
 	 escreve_run(tam_run);
+	//cout<<"RUN "<<i<<" termina em "<< escrita->pega_conta_bits_global()<<" "<<pos_prox[i]<<endl;
 	 old_pos_prox = escrita->pega_conta_bits_global();
+         if (nrun_global == 60){
+	     cout<<"ordena_todas_runs 3: "<<conta_bits[60]<<" "<<pos_prox[60]<<" "<<escrita->pega_conta_bits_global()<<endl;
+	 }
          i++;
      }
+	 escrita->inicia_ntripla(0);
 
 
     if(dynamic_cast<EscreveCompacta*>(escrita) != 0){
@@ -240,74 +263,48 @@ void Ordena::ordena_todas_runs(unsigned long int* pos_prox){
 
 }
 
-void Ordena::carrega_buffer_ordenacao(unsigned long int* pos_prox){
-
-    int num_conta_bits = conta_bits.size();
-    deque<unsigned int> v;
-    int termino_arquivo;
-
-
-    /*for(int i=0;i<num_conta_bits;i++){
-       
-          leitura->inicia_conta_bits(conta_bits[i]);
-
-          termino_arquivo = leitura->ler_tripla(v,3);
-          buffer_ordenacao[i].pos = v.back();
-          v.pop_back();
-          buffer_ordenacao[i].doc = v.back();
-          v.pop_back();
-          buffer_ordenacao[i].lex = v.back();
-          v.pop_back();
-
-	  //cout<<"Tripla buffer ordenacao ("<<i<<") "<<buffer_ordenacao[i].lex<<" "<<buffer_ordenacao[i].doc<<" "<<buffer_ordenacao[i].pos<<endl;
-	  //cout<<"conta_bits ("<<i<<") "<<conta_bits[i]<<endl;
-          if (termino_arquivo >= 0)
-                  pos_prox[i] = leitura->pega_conta_bits();
-          else pos_prox[i] = -leitura->pega_conta_bits();
-     }*/
-}
 
 void Ordena::atualiza_buffer_ordenacao(int pos,unsigned long int* pos_prox,vector<unsigned long int> limites){
 
     deque<unsigned int> v;
-    int tam_buffer = limites.size();
 
-    //sera que o problema eh aqui?
-    //cada buffer deveria ter 4 000 000 de triplas e 12 milhoes de numeros. 
-    //Esta atualizacao deveria ser feita 40 vezes
     if (conta_bits[pos] < limites[pos+1]){
-        int tamanho = buffer_ordenacao[pos].size();
-        if (buffer_ordenacao[pos].size() <= 1){
-	      if (buffer_ordenacao[pos].size()==1){ 
-		  buffer_ordenacao[pos].pop();
-	      }
-              leitura_run->inicia_conta_bits(conta_bits[pos]);
+        int tamanho_buffer = buffer_ordenacao[pos].size();
+        if (tamanho_buffer <= 1){
 
+              leitura_run->inicia_ntripla(pos);
+	      buffer_ordenacao[pos].clear();
+	      /*if (pos==60 && teste_conta[pos] >= 1000000){
+		  cout<<"1 >>> "<<conta_bits[pos]<<" "<<limites[pos+1]<<" "<<leitura_run->pega_conta_bits()<<endl;
+	      }*/
+              leitura_run->inicia_conta_bits(conta_bits[pos]);
               int pos_arquivo = leitura_run->ler_tripla(v,3*TAM_BUFFER_ORD);
+	      /*if (pos==60 && teste_conta[pos] >= 1000000){
+		  cout<<"2 >>> "<<conta_bits[pos]<<" "<<limites[pos+1]<<" "<<leitura_run->pega_conta_bits()<<endl;
+	      }*/
+
+
 	      int n = v.size()/3;
 	      tripla_t tt;
 	      for(int i=0;i<n;i++){
                   tt.lex = v.at(3*i);
                   tt.doc = v.at(3*i+1);
                   tt.pos = v.at(3*i+2);
-	          buffer_ordenacao[pos].push(tt);
-	     }	
+	          buffer_ordenacao[pos].push_back(tt);
+	      }
 	      
 	      
-		 //pode nao ter chegado ainda no limite..soh na proxima rodada
-		 //certo?Nao sei
-	      int old_pos_prox = pos_prox[pos];	  
-              pos_prox[pos] = leitura_run->pega_conta_bits();
-	      //if (pos_prox[pos] == limites[pos+1])
-		 conta_bits[pos] = pos_prox[pos];
-	      //else conta_bits[pos]=old_pos_prox;
-	      //cout<<"2 Buffer na posicao "<<pos<<" agora possui "<<buffer_ordenacao[pos].size()<<" elementos"<<endl;
+            pos_prox[pos] = leitura_run->pega_conta_bits();
+	    conta_bits[pos] = pos_prox[pos];
+	      /*if (pos==60 && teste_conta[pos] >= 1000000){
+		  cout<<"3 >>> "<<conta_bits[pos]<<" "<<limites[pos+1]<<" "<<leitura_run->pega_conta_bits()<<endl;
+	      }*/
+
 	}else{
-	         //cout<<"3 Buffer na posicao "<<pos<<" possui "<<buffer_ordenacao[pos].size()<<" elementos"<<endl;
-	         buffer_ordenacao[pos].pop();
+	         buffer_ordenacao[pos].pop_front();
         }
     }else{
-	if (buffer_ordenacao[pos].size()!=0) buffer_ordenacao[pos].pop();
+	if (buffer_ordenacao[pos].size()!=0) buffer_ordenacao[pos].pop_front();
     }
 }
 
@@ -317,7 +314,7 @@ void Ordena::executa(Colecao& col){
     //executa a ordenacao do indice em disco e atualiza 
     //a posicao da lista de termos em disco
 
-    buffer_ordenacao = new queue<tripla_t>[QTD_RUNS]();
+    buffer_ordenacao = new deque<tripla_t>[QTD_RUNS]();
     unsigned long int pos_prox[QTD_RUNS];
 
     clock_t t;
@@ -331,6 +328,12 @@ void Ordena::executa(Colecao& col){
 
     tripla_t min;
     vector<unsigned long int> limites(conta_bits);
+
+    //atualizar conta_bits com pos_prox
+    for (int k = 0;k<conta_bits.size();k++){
+	conta_bits[k] = pos_prox[k];
+    }
+
     int min_conta_bits = 0;
     deque<unsigned int> v;
     vector<unsigned int> tmp_v;
@@ -338,29 +341,36 @@ void Ordena::executa(Colecao& col){
     tmp_v.reserve(TAM_BUFFER_ORD);
 
 
-    int old_lex,old_doc;
+    int old_lex,old_doc,old_pos,tamanho_voc;
     int ntriplas = 0;
+    ntriplas_global = ntriplas;
     int atualiza_conta_bits = escrita_ordenada->pega_conta_bits();
     int termino_arquivo = 1;
-    int* flag_lex_visitado = new int[col.pega_tamanho_vocabulario()+1]();
 
-    //cout << "NUMERO DE TRIPLAS: " << conta_triplas << " " << col.pega_tamanho_vocabulario()<< endl;
+    tamanho_voc = col.pega_tamanho_vocabulario();
+    int* flag_lex_visitado = new int[tamanho_voc+1];
+
+    memset(flag_lex_visitado,0,sizeof(int)*(tamanho_voc+1));
+
+    cout << "NUMERO DE TRIPLAS: " << conta_triplas << " " << col.pega_tamanho_vocabulario()<< " "<<col.pega_tamanho_vocabulario_invertido() << endl;
 
     t = clock();
 
-    //carrega_buffer_ordenacao(pos_prox);
 
-	    int num_pos = 0;
+    int num_pos = 0;
+    for(int k = 0;k<60;k++)
+           teste_conta[k] = 0;
     while(ntriplas<conta_triplas){
-       //cout << "Inicio do Laco que escolhe menor tripla " << conta_triplas << " "<< ntriplas << endl;
 
 
 	if (ntriplas > 0 ){
 	   old_doc = min.doc;
 	   old_lex = min.lex;
+	   old_pos = min.pos;
 	}else{
 	    old_lex = -1;
 	    old_doc = -1;
+	    old_pos = -1;
 	}
 
          min.lex = UINT_MAX;
@@ -375,6 +385,7 @@ void Ordena::executa(Colecao& col){
 	    if (buffer_ordenacao[i].empty()){ 
 		continue;
 	    }
+
 	    //cout<<"buffer_ordenacao["<<i<<"] " << buffer_ordenacao[i].front().lex <<" "<<buffer_ordenacao[i].front().doc<<" "<<buffer_ordenacao[i].front().pos<<endl;
 
 	    if (compara_triplas(buffer_ordenacao[i].front(),min)<0){
@@ -384,26 +395,41 @@ void Ordena::executa(Colecao& col){
 		min_conta_bits = i;
 	    }
         }
-       if (ntriplas%10000000==0) cout<< "-->"<<ntriplas<<endl;
+
+	/* if (teste_conta[17]>=9900000){
+	    cout << "Minimo escolhido: (" <<ntriplas<<") "<< min.lex << " " << min.doc << " " << min.pos << " " << flag_lex_visitado[min.lex] << old_lex<< endl;
+	    cout<<"Frente (17) "<<buffer_ordenacao[17].front().lex<<" "<<buffer_ordenacao[17].front().doc<<" "<<buffer_ordenacao[17].front().pos<<" "<<teste_conta[17]<<endl;
+	}*/
 
 
-        if (col.pega_tamanho_vocabulario()<min.lex){
+
+
+
+        if (tamanho_voc<min.lex){
+	    //e nem entrou aqui! porque esta acontecendo isso?
 	    cout <<"OUCH: "<<col.pega_tamanho_vocabulario()<<" "<<min.lex<<" "<<ntriplas<<" buffer no.: "<<min_conta_bits<<" "<<buffer_ordenacao[min_conta_bits].size()<<endl;
 	}
+
+        teste_conta[min_conta_bits]++;
 
 	//se esta no final de conta bits tbm
 	    //na ultima tripla nao precisa acessar o proximo
          //if (buffer_ordenacao[min_conta_bits].size()==0)
-	 //   conta_bits[min_conta_bits] = pos_prox[min_conta_bits];
-	 //cout << "Minimo escolhido: (" <<ntriplas<<") "<< min.lex << " " << min.doc << " " << min.pos << " " << min_conta_bits << " "<<buffer_ordenacao[min_conta_bits].size()<< endl;
 	 atualiza_buffer_ordenacao(min_conta_bits,pos_prox,limites);
+	if (min_conta_bits==60)
+	    cout<<"Conferindo: "<<buffer_ordenacao[min_conta_bits].size()<<" "<<teste_conta[min_conta_bits]<<endl;
+	 /* if (min.lex>=3726028 && min.lex<=3726055)
+	 cout << "Minimo escolhido: (" <<ntriplas<<") "<< min.lex << " " << min.doc << " " << min.pos << " " << flag_lex_visitado[min.lex] << old_lex<< endl;
+	 */
 
+	  
 
 	//primeira vez que esbarro neste lexico
 	if (flag_lex_visitado[min.lex] == 0){
 	    if (old_lex == -1 && old_doc == -1){
 		old_lex = min.lex;
 		old_doc = min.doc;
+		old_pos = min.pos;
 	    }
 	}
 
@@ -411,28 +437,28 @@ void Ordena::executa(Colecao& col){
 	//se trocar de documento. Acumular no vetor 
 	//junto com o tamanho
 	//TODO: Vai dar errado isso aqui. rever
-	if (old_doc!=min.doc){
-	    v.push_front(num_pos);
-	    v.push_front(old_doc);
-	    copy(v.begin(), v.end(), back_inserter(tmp_v));
-	    if (tmp_v.size()>TAM_BUFFER_ORD){
-                escrita_ordenada->escreve_tripla(tmp_v);
-		tmp_v.clear();
-	    }
-	    v.clear();
-
-	    num_pos = 0;
-            //escrita_ordenada->escreve_tripla(v);
-	}else{
 	    //Escrever apenas quando mudar de lexico
-	    if (old_lex!=min.lex){
+        if (old_lex!=min.lex){
 	       v.push_front(num_pos);
 	       v.push_front(old_doc);
 	       copy(v.begin(), v.end(), back_inserter(tmp_v));
                escrita_ordenada->escreve_tripla(tmp_v);
-		tmp_v.clear();
+	       tmp_v.clear();
 	       v.clear();
 	       num_pos = 0;
+	    
+	}else{
+	     if (old_doc!=min.doc){
+	         v.push_front(num_pos);
+	         v.push_front(old_doc);
+	         copy(v.begin(), v.end(), back_inserter(tmp_v));
+	         if (tmp_v.size()>TAM_BUFFER_ORD){
+                     escrita_ordenada->escreve_tripla(tmp_v);
+		     tmp_v.clear();
+	         }
+	         v.clear();
+
+	         num_pos = 0;
 	    }
 	}
 
@@ -440,8 +466,8 @@ void Ordena::executa(Colecao& col){
 	if (flag_lex_visitado[min.lex] == 0){
 	    //acho que este conta_bits nao presta mais porque vou escrever 
 	    //em um novo arquivo
-	    //cout << "Inicio Buffer do minimo: " << min.lex << " " << min.doc << " " << min.pos << " " << escrita_ordenada->pega_conta_bits_global()<< endl;
 	    col.atualiza_vocabulario(min.lex,escrita_ordenada->pega_conta_bits_global());
+	    //cout << "Inicio Buffer do minimo: " << min.lex << " " << min.doc << " " << min.pos << " " << escrita_ordenada->pega_conta_bits_global()<<" "<<old_lex<<" "<<ntriplas<< endl;
 	    flag_lex_visitado[min.lex] = 1;
 	}
 
@@ -451,10 +477,17 @@ void Ordena::executa(Colecao& col){
 	//cout << " " << escrita_ordenada.pega_conta_bits_global() << endl;
 
         //cout << ">> " << ntriplas << " " << conta_triplas << endl;
-     //  cout << "Ponta do Laco que escolhe menor tripla " << conta_triplas << " "<< ntriplas << endl;
+       //cout << "Ponta do Laco que escolhe menor tripla " << conta_triplas << " "<< ntriplas << endl;
 
 	ntriplas++;
+	ntriplas_global = ntriplas;
     }
+
+    cout<<"Teste do buffer vazio"<<endl;
+    for(int k = 0;k<num_conta_bits;k++){
+	cout<<"-->"<<k<<" "<<teste_conta[k]<<" "<<buffer_ordenacao[k].size()<<endl;
+    }
+
     t = clock() -t;
     cout << "Tempo Ordena::executa "<< ((float)t/CLOCKS_PER_SEC) << "s" << endl;
 

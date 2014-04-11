@@ -27,8 +27,17 @@ int conta_numeros = 0;
 //construtor
 Escreve::Escreve(string narquivo):arquivo(narquivo, ios::out|ios::binary|ios::app){
     conta_bits = 0;
+    tmp_ntripla = 0;
     conta_bits_global = 0;
     nome_arquivo = narquivo;
+}
+
+void Escreve::inicia_ntripla(unsigned long int x){
+    tmp_ntripla = x;
+}
+
+unsigned long int Escreve::pega_ntripla(){
+    return tmp_ntripla;
 }
 
 void Escreve::fecha_arquivo(){
@@ -64,9 +73,12 @@ streampos Escreve::escreve_tripla(vector<unsigned int> v){
         carrega_buffer(tamv);
         
         vector<unsigned int>::iterator it;
-        
+        int cnumeros = 0;
         for(it=v.begin();it!=v.end();it++){
             escreve_numero(*it,2*tamv);
+	    //if (conta_bits_global>11808377492 && conta_bits_global <=11817985326 && tmp_ntripla == 15)
+		//cout<<"Escreve::conta_bits: "<< conta_bits_global<<" "<<cnumeros<<" "<<*it<<endl;
+	    cnumeros++;
 	    conta_numeros++;
         }
         
@@ -138,8 +150,9 @@ void EscreveCompacta::escreve_numero(unsigned int x,int tam_buffer){
     unsigned int long um = 1;
     para_codigo_gamma(x,y,ny);
 
-
     conta_bits_global += ny;
+
+
     
     
     //posicao no buffer que o numero deve ficar

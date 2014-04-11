@@ -28,6 +28,7 @@ using namespace std;
 
 Le::Le(string narquivo){
     conta_bits = 0;
+    tmp_ntripla = 0;
     nome_arquivo = narquivo; 
     inicia_tamanho_arquivo();
 }
@@ -47,11 +48,19 @@ void Le::inicia_nome_arquivo(string narquivo){
     nome_arquivo = narquivo;
 }
 
+void Le::inicia_ntripla(unsigned long int x){
+    tmp_ntripla = x;
+}
+
+unsigned long int Le::pega_ntripla(){
+    return tmp_ntripla;
+}
+
 unsigned long int Le::pega_conta_bits(){
     return conta_bits;
 }
 
-void Le::inicia_conta_bits(unsigned int cb){
+void Le::inicia_conta_bits(unsigned long int cb){
     conta_bits = cb;
 }
 
@@ -120,6 +129,8 @@ int Le::ler_tripla(deque<unsigned int>& v,int nnum){
         for(int i=0;i<nnum;i++){
 	    //break
 	    v.push_back(ler_numero());
+	    //if (conta_bits>11808377492 && tmp_ntripla >= 15)
+	//	cout<<"Ler::conta_bits: "<<tmp_ntripla<<" "<< conta_bits<<" "<<v.back()<<" "<<i<<endl;
 	    parquivo = arquivo.tellg();
 	     if (buffer.size() != 0){
 		//buffer zero nem sempre eh condicao de parada. Pode ter o numero 1 em unario la
@@ -142,7 +153,8 @@ int Le::ler_tripla(deque<unsigned int>& v,int nnum){
 		}
 	    }else{
 	        if ((parquivo == tamanho_arquivo)  || arquivo.eof()){
-		    terminou = -1;}
+		    terminou = -1;
+		}
 	        else{
 		    parquivo = arquivo.tellg();
 		    terminou = 1;
@@ -218,19 +230,22 @@ void LeCompacta::carrega_buffer(ifstream& arquivo,int nnum){
     deque<unsigned int> tmp;
     tmp.swap(buffer);
 
-
-    unsigned int *buf = new unsigned int[nnum+1]();
+    //TODO: quando esta lendo o penultimo buffer (15) está dando problema?
+    unsigned int *buf = new unsigned int[(2*nnum)+1]();
     streampos parquivo;
-    int tam_buffer = nnum+1;
+    int tam_buffer = (2*nnum)+1;
 
     parquivo = arquivo.tellg();
-    streampos buffer_bytes = nnum*sizeof(int);
+    streampos buffer_bytes = 2*nnum*sizeof(int);
 
     if ( (parquivo+buffer_bytes)>tamanho_arquivo){
-       tam_buffer = (tamanho_arquivo-parquivo)/sizeof(int);
-       arquivo.read((char*) buf,tam_buffer*sizeof(int));
+       tam_buffer = (tamanho_arquivo-parquivo);
+       //if (tmp_ntripla>=15)
+	 //  cout<<"LeCompacta::tam_buffer-> "<<tam_buffer<<" parquivo-> "<<parquivo<<" tamanho_arquivo-> "<<tamanho_arquivo<<" nnum-> "<<nnum<<" "<<tmp_ntripla<<endl;
+       arquivo.read((char*) buf,2*tam_buffer);
+       tam_buffer = tam_buffer/sizeof(int);
     }else{ 
-       arquivo.read((char*) buf,sizeof(int)*(nnum+1));
+       arquivo.read((char*) buf,sizeof(int)*(2*nnum+1));
     }
     //bits ja lidos devem ser zerados. Devem existir pos_bit's para zerar
     int pos_bit = conta_bits % 32;
@@ -255,7 +270,13 @@ int LeCompacta::ler_numero(){
     unsigned int nx;
 
     //int numero = gamma_para_int(buffer,nx,31-pos_bit);
+    /*if (conta_bits==11817977456 || conta_bits==11817977493){
+	cout<<"Ler(1)::  buffer antes-> "<< buffer[0]<< " buffer posterior-> "<< buffer[1]<<" pos_bit: "<<pos_bit<<" tamanho buffer-> "<<buffer.size()<<" ntripla "<<tmp_ntripla<<endl;
+    }*/
     int numero = gamma_para_int(buffer,nx,31-pos_bit);
+    /*if (conta_bits==11817977456 || conta_bits==11817977493){
+	cout<<"Ler(2):: numero-> "<<numero<<" qtd_bits-> "<<nx<<" buffer antes-> "<< buffer[0]<< " buffer posterior-> "<< buffer[1]<<" tamanho buffer-> "<<buffer.size()<<" ntripla: "<< tmp_ntripla<<endl;
+    }*/
 
     conta_bits += nx;
 

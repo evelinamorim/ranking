@@ -1,4 +1,4 @@
-ricode = ../code/src/
+ricode = /Users/evelinamorim/Dropbox/UFMG/2014-1/RI/tp1/code/src/
 ridata = /Users/evelinamorim/Documents/Ufmg/2014-1/RI/
 riindex = index.txt
 
@@ -14,7 +14,8 @@ pesquisa: $(ricode)
 	g++ -O0  -c -o le.o le.cpp -I $(ricode) -g
 	g++ -O0  -c -o escreve.o escreve.cpp -I $(ricode) -g
 	g++ -O0  -c -o ordena.o ordena.cpp -I $(ricode) -g
-	g++ -O0  -o pesquisa pesquisa.o colecao.o util.o le.o escreve.o ordena.o $(ricode)/CollectionReader.o $(ricode)/Document.o -lz -lhtmlcxx -g 
+	g++ -O0  -c -o ranking.o ranking.cpp -I $(ricode) -g
+	g++ -O0  -o pesquisa pesquisa.o colecao.o util.o le.o escreve.o ordena.o ranking.o $(ricode)/CollectionReader.o $(ricode)/Document.o -lz -lhtmlcxx -g 
 
 #compila ricode
 index : $(ricode)

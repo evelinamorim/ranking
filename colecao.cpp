@@ -65,6 +65,10 @@ int Colecao::pega_tamanho_vocabulario(){
     return vocabulario.size();
 }
 
+int Colecao::pega_tamanho_vocabulario_invertido(){
+    return vocabulario_invertido.size();
+}
+
 void Colecao::ler(string dirEntrada,string nomeIndice){
     CollectionReader* leitor = new CollectionReader(dirEntrada,nomeIndice);
     Document doc;
@@ -231,9 +235,9 @@ void Colecao::armazena_termos_doc(unordered_map<int,vector<int> >&  termos_pos,i
             v.push_back(it_termo->first);
 	    v.push_back(doc);
             v.push_back(*it_pos);
-	   //cout << "==> " <<it_termo->first  << " " << doc << " "  << *it_pos << endl;
+	    //cout << "==> " <<it_termo->first  << " " << doc << " "  << *it_pos <<" "<<testeuou<<endl;
 
-       
+         testeuou++;
 	   //  vector<unsigned int>().swap(v);
 	}
        ++it_termo;
@@ -241,7 +245,6 @@ void Colecao::armazena_termos_doc(unordered_map<int,vector<int> >&  termos_pos,i
 
     //TODO: estava dentro do laco de repeticao
     escrita->escreve_tripla(v);
-    testeuou += v.size();
     //cout<<"Escrevendo "<<testeuou<<" triplas com "<<escrita->pega_conta_bits_global()<<endl;
 
     //cout << "Armazena: " << v.size() << endl;
@@ -288,11 +291,11 @@ void Colecao::escreve_vocabulario(){
     }
 }
 
-vector<int> Colecao::carrega_vocabulario(const string arquivo_vocabulario){
+vector<unsigned int> Colecao::carrega_vocabulario(const string arquivo_vocabulario){
     ifstream arquivo(arquivo_vocabulario,ios::in);
     string linha;
     int i = 1;
-    vector<int> posicoes;
+    vector<unsigned int> posicoes;
     char* palavra = new char[MAIOR_PALAVRA+2]();
     int tamanho_palavra;
 
@@ -300,10 +303,13 @@ vector<int> Colecao::carrega_vocabulario(const string arquivo_vocabulario){
 	while(getline(arquivo,linha)){
 	    stringstream linhastream(linha);
 	    string dado;
-	    string lex;
-	    int pos;
+	    string lex,posstr;
+	    unsigned long int pos;
 
-	    linhastream >> lex >> pos;
+	    linhastream >> lex;
+	    linhastream >> pos;
+
+
 	    memset(palavra,0,MAIOR_PALAVRA+2);
             copy(lex.begin(),lex.end(),palavra);
 
@@ -330,10 +336,10 @@ vector<int> Colecao::carrega_vocabulario(const string arquivo_vocabulario){
 
 }
 
-int Colecao::pega_lexico_inteiro(string p){
+unsigned long int Colecao::pega_lexico_inteiro(string p){
     char* palavra = new char[p.size()+2];
     memset(palavra,0,p.size()+1);
-    int lex;
+    unsigned long int lex;
     copy(p.begin(),p.end(),palavra);
     if (palavra!=NULL){
        lex = vocabulario[palavra];
