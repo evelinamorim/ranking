@@ -75,22 +75,10 @@ struct Hash_Func{
 	   }
 	   static hash<string> hash_function; // standard hashing functor
            int h = hash_function(s);
-	   //cout << "==> " << s << " " << h << endl;
 	   return h;
 	}
      
-        //BKDR hash algorithm
-	/*int operator()(char * str)const
-	{
-	    int seed = 131;//31  131 1313 13131131313 etc//
-	    int hash = 0;
-	    while(*str){
-	       hash = (hash * seed) + (*str);
-	        str ++;
-	    }
-	    return hash & (0x7FFFFFFF);
-	                                                                                   }*/ 
-                                                                                    };
+};
 
 class Colecao{
     //lista de documentos
@@ -99,26 +87,33 @@ class Colecao{
     unordered_map<char*,unsigned long int,Hash_Func,eqstr> vocabulario;
     unordered_map<unsigned long int,char*> vocabulario_invertido;
 
+    vector<unsigned int> ft;
+
     char** buffer_chaves;
     int contaPalavras;
+
     static const string nome_arquivo_vocabulario;
     static const string nome_arquivo_indice;
+    static const string nome_tam_arquivos;
+
     Escreve *escrita;
 
     public:
     Colecao(bool compacta);
     ~Colecao();
     void ler(string dirEntrada,string nomeIndice);
-    void ler_arvore_dom(tree<htmlcxx::HTML::Node> arvoreDom,int doc,unordered_map<int,vector<int> >& termos_pos);
+    void ler_arvore_dom(tree<htmlcxx::HTML::Node> arvoreDom,int doc,unordered_map<int,vector<int> >& termos_pos,ofstream& arquivo);
     vector<string> lerLexicais(string sentenca);
     void armazena_termos_doc(unordered_map<int,vector<int> >& termos_pos,int doc);
     const string pega_nome_arquivo_indice();
+
     int pega_tamanho_vocabulario();
     int pega_tamanho_vocabulario_invertido();
+    vector<unsigned int> pega_ft();
 
     void atualiza_vocabulario(int lex,unsigned long int pos);
     void escreve_vocabulario();
-    vector<unsigned int>  carrega_vocabulario(const string arquivo_vocabulario);
+    vector<unsigned long int>  carrega_vocabulario(const string arquivo_vocabulario);
     unsigned long int pega_lexico_inteiro(string p);
     char*  pega_lexico(int p);
 

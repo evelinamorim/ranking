@@ -25,6 +25,9 @@
 
 using namespace std;
 
+#ifndef __LE_H_
+#define __LE_H_
+
 class Le{
     protected:
     deque<unsigned int> buffer;
@@ -44,9 +47,10 @@ class Le{
     void inicia_ntripla(unsigned long int x);
     unsigned long int pega_conta_bits();
     unsigned long int pega_ntripla();
+    streampos pega_tamanho_arquivo();
 
     int ler_tripla(deque<unsigned int>& v,int nnum);
-    int ler_tripla_pos(deque<unsigned int>& v,int pos);
+    int ler_tripla_pos(deque<unsigned int>& v,unsigned long int pos);
 
     //metodos virtuais
     virtual int ler_numero() =0;
@@ -69,3 +73,4 @@ class LeCompacta: public Le{
     int ler_numero();
     void carrega_buffer(ifstream& arquivo,int nnum);
 };
+#endif

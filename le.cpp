@@ -37,7 +37,7 @@ void Le::inicia_tamanho_arquivo(){
     ifstream arquivo(nome_arquivo,ios::in|ios::binary|ios::ate);
     if (arquivo.is_open()){
 	tamanho_arquivo = arquivo.tellg();
-	cout << "TAMANHO_ARQUIVO: "<<tamanho_arquivo<<endl;
+	//cout << "TAMANHO_ARQUIVO: "<<tamanho_arquivo<<endl;
 	arquivo.close();
     }else{
 	cout << "Ordena::carrega_run::Nao foi possivel abrir o arquivo."<< endl;
@@ -60,19 +60,26 @@ unsigned long int Le::pega_conta_bits(){
     return conta_bits;
 }
 
+streampos Le::pega_tamanho_arquivo(){
+    return tamanho_arquivo;
+}
+
 void Le::inicia_conta_bits(unsigned long int cb){
     conta_bits = cb;
 }
 
-int Le::ler_tripla_pos(deque<unsigned int>& v,int pos){
+int Le::ler_tripla_pos(deque<unsigned int>& v,unsigned long int pos){
     //esta funcao le tripla ateh a posicao de bit dada
     ifstream arquivo(nome_arquivo,ios::in|ios::binary);
-    int pos_arquivo;
+    unsigned long int pos_arquivo;
+    int fim_arquivo  = 1;
+    streampos parquivo;
 
     if (arquivo.is_open()){
 
         pos_arquivo = floor(conta_bits/32);
-	int nnum = (pos-conta_bits)>32?(pos-conta_bits):32;
+	int nnum = (pos-conta_bits)>32?(pos-conta_bits)/16:2;
+	//cout<<" NNum "<<nnum<<" pos: "<<pos<<" conta_bits "<<conta_bits<<endl;
 
 	arquivo.seekg(sizeof(int)*pos_arquivo,ios::beg);
 	carrega_buffer(arquivo,nnum);
@@ -81,18 +88,18 @@ int Le::ler_tripla_pos(deque<unsigned int>& v,int pos){
 	    v.push_back(ler_numero());
 
 
-	    if (arquivo.eof() && buffer[0]==0)
-	       pos_arquivo = -1;
+	    if (((parquivo == tamanho_arquivo) || arquivo.eof()) && buffer[0]==0)
+	       fim_arquivo = -1;
 
-	    pos_arquivo = arquivo.tellg();
+	    parquivo = arquivo.tellg();
 	    if (buffer.size() == 0){
 		break;
 	    }
-	    if (pos_arquivo<0 && buffer[0]!=0)
-	       pos_arquivo = 1;
+	    if ((parquivo == tamanho_arquivo || parquivo<0) && buffer[0]!=0)
+	       fim_arquivo = 1;
 
 
-	    if (pos_arquivo<0) break;
+	    if (fim_arquivo<0) break;
 	}
 
 

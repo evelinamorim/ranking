@@ -37,8 +37,9 @@ int testepalavras = 0;
 using namespace std;
 using namespace RICPNS;
 
-const string Colecao::nome_arquivo_indice="index_compacta.bin";
-const string Colecao::nome_arquivo_vocabulario="voc_compacta.txt";
+const string Colecao::nome_arquivo_indice="../index_compacta.bin";
+const string Colecao::nome_arquivo_vocabulario="../voc_compacta.txt";
+const string Colecao::nome_tam_arquivos="../tam_arquivos.txt";
 
 Colecao::~Colecao(){
 
@@ -55,6 +56,7 @@ Colecao::Colecao(bool compacta){
 
     buffer_chaves = new char*[TAM_VOC];
     contaPalavras = 1;
+    ft.push_back(0);
 }
 
 const string Colecao::pega_nome_arquivo_indice(){
@@ -67,6 +69,10 @@ int Colecao::pega_tamanho_vocabulario(){
 
 int Colecao::pega_tamanho_vocabulario_invertido(){
     return vocabulario_invertido.size();
+}
+
+vector<unsigned int> Colecao::pega_ft(){
+    return ft;
 }
 
 void Colecao::ler(string dirEntrada,string nomeIndice){
@@ -82,12 +88,14 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
     int i = 1;
     clock_t  t;
     t = clock();
+    ofstream arquivo_tam_arquivos (nome_tam_arquivos, ios::out|ios::app);
+
     while(leitor->getNextDocument(doc)){
 
 	
 	//cout << "[" << doc.getURL() << "]" << endl;
 	tree<htmlcxx::HTML::Node> dom = parser.parseTree(doc.getText());
-        ler_arvore_dom(dom,i,termos_pos);
+        ler_arvore_dom(dom,i,termos_pos,arquivo_tam_arquivos);
 
 	armazena_termos_doc(termos_pos,i);
 	    
@@ -95,6 +103,9 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
 
 	++i;
     }
+
+    if (arquivo_tam_arquivos.is_open())
+        arquivo_tam_arquivos.close();
     t = clock() - t;
     cout << "Tempo Colecao::ler: "<< ((float)t/CLOCKS_PER_SEC) << "s" << endl;
 
@@ -112,7 +123,7 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
     delete leitor;
 }
 
- void Colecao::ler_arvore_dom(tree<htmlcxx::HTML::Node> dom,int idArvore,unordered_map<int,vector<int> >& termos_pos){
+ void Colecao::ler_arvore_dom(tree<htmlcxx::HTML::Node> dom,int idArvore,unordered_map<int,vector<int> >& termos_pos,ofstream& arquivotam){
     // cout << "ler_arvore_dom " << idArvore << endl;
     tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
     tree<htmlcxx::HTML::Node>::iterator end = dom.end();
@@ -174,6 +185,8 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
 			     free(tmp);
 
 			  testepalavras++;
+			 // if (listaPalavras[ii] == "baixaki")
+			   //   cout<<"baixaki no doc "<<idArvore<<endl;
 		          if (vocabulario.find(palavra) == vocabulario.end()){
 
 			       buffer_chaves[contaPalavras] = new char[tamanho_palavra+1];
@@ -184,16 +197,22 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
 
 	                      vocabulario[buffer_chaves[contaPalavras]] = contaPalavras;
 
+
 		              vocabulario_invertido[contaPalavras] = buffer_chaves[contaPalavras];
  
 			      termos_pos[contaPalavras] = vector<int>();
 		              termos_pos[contaPalavras].push_back(palavraPos);
 
+			      ft.push_back(1);
 		              contaPalavras++;
 		         }else{
 
-			      if (termos_pos.find(vocabulario[palavra]) == termos_pos.end())
-			           termos_pos[vocabulario[palavra]] = vector<int>();
+			      if (termos_pos.find(vocabulario[palavra]) == termos_pos.end()){
+				   int idpalavra = vocabulario[palavra];
+			           termos_pos[idpalavra] = vector<int>();
+				   //so contar frequency term quando for a primeira vez neste doc
+				   ft[idpalavra] = ft[idpalavra]+1;
+			      }
 		              termos_pos[vocabulario[palavra]].push_back(palavraPos);
 		         }
 		      } 
@@ -203,6 +222,11 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
 	       //cout << "Fim da leitura de listaPalavras" << endl;	  
 	    }  
 	
+    }
+
+    if (arquivotam.is_open()){
+        arquivotam << palavraPos;
+        arquivotam << endl;
     }
     if (palavra!=NULL)
        delete[] palavra;
@@ -274,7 +298,7 @@ void Colecao::escreve_vocabulario(){
         int i=1;
 	int ntermos = vocabulario_invertido.size();
         while(i<=ntermos){
-	  arquivo << vocabulario_invertido[i] << " " <<  vocabulario[vocabulario_invertido[i]] << endl;
+	  arquivo << vocabulario_invertido[i] << " " <<  vocabulario[vocabulario_invertido[i]] << " "<< ft[i] << endl;
 	    i++;
 	}
 	arquivo.close();
@@ -291,25 +315,33 @@ void Colecao::escreve_vocabulario(){
     }
 }
 
-vector<unsigned int> Colecao::carrega_vocabulario(const string arquivo_vocabulario){
+vector<unsigned long int> Colecao::carrega_vocabulario(const string arquivo_vocabulario){
     ifstream arquivo(arquivo_vocabulario,ios::in);
     string linha;
     int i = 1;
-    vector<unsigned int> posicoes;
+    vector<unsigned long int> posicoes;
     char* palavra = new char[MAIOR_PALAVRA+2]();
     int tamanho_palavra;
+    vector<string> tokens;
 
     if (arquivo.is_open()){
 	while(getline(arquivo,linha)){
 	    stringstream linhastream(linha);
 	    string dado;
-	    string lex,posstr;
+	    string lex;
 	    unsigned long int pos;
+	    unsigned int ft_individual;
 
-	    linhastream >> lex;
-	    linhastream >> pos;
+            tokenizar(linha,tokens);
 
+	    //linhastream >> lex;
+	    //linhastream >> pos;
+	    //linhastream >> ft_individual;
+	    lex = tokens[0];
+	    pos = strtoul(tokens[1].c_str(),NULL,0);
+	    ft_individual = strtoul(tokens[2].c_str(),NULL,0);
 
+            //cout<<"--> "<<i<<" "<<pos<<" "<<ft_individual<<endl;
 	    memset(palavra,0,MAIOR_PALAVRA+2);
             copy(lex.begin(),lex.end(),palavra);
 
@@ -323,9 +355,15 @@ vector<unsigned int> Colecao::carrega_vocabulario(const string arquivo_vocabular
 	        vocabulario[buffer_chaves[i]] = i;
 	        i++;
 	        posicoes.push_back(pos);
+                //cout<<"--> "<<i<<" "<<pos<<" "<<ft_individual<<" "<<posicoes.back()<<endl;
+		//if (i==5321) cout<<"==>"<<pos<<" "<<posicoes.back()<<endl;
+
+		ft.push_back(ft_individual);
 
 	        vocabulario_invertido[i] = buffer_chaves[i];
 	    }
+
+	    tokens.clear();
 	}
     }else{
 	cout << "Colecao::carrega_vocabulario: Nao foi possivel abrir vocabulario." << endl;
@@ -339,7 +377,9 @@ vector<unsigned int> Colecao::carrega_vocabulario(const string arquivo_vocabular
 unsigned long int Colecao::pega_lexico_inteiro(string p){
     char* palavra = new char[p.size()+2];
     memset(palavra,0,p.size()+1);
+
     unsigned long int lex;
+
     copy(p.begin(),p.end(),palavra);
     if (palavra!=NULL){
        lex = vocabulario[palavra];

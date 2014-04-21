@@ -27,10 +27,22 @@
 
 using namespace std;
 
+#ifndef __PESQUISA_H_
+#define __PESQUISA_H_
+
+bool comparanota(resultado_pesquisa_t t1,resultado_pesquisa_t t2){
+    return t1.nota<t2.nota;
+}
+
+bool comparadocid(resultado_pesquisa_t t1,resultado_pesquisa_t t2){
+    return t1.docid<t2.docid;
+}
+
 class Pesquisa{
     static const string nome_arquivo_vocabulario;
     static const string nome_arquivo_indice;
-    vector<int> posicoes_palavras;
+    static const string nome_tam_arquivos;
+    vector<unsigned long int> posicoes_palavras;
     Le* leitura;
     Colecao* col;
     Ranking* rank;
@@ -43,3 +55,4 @@ class Pesquisa{
     vector<string> processa_consulta(string consulta,int& tipo_consulta);
     void intersecao(unordered_map<unsigned int,vector<unsigned int> >& r1, unordered_map<unsigned int,vector<unsigned int> >& r2);
 };
+#endif

@@ -44,13 +44,13 @@ int main(int argc,char** argv){
 
     //le a colecao e controi o indice desordenado
    
-col->ler(dirEntrada,nomeIndice);
+   col->ler(dirEntrada,nomeIndice);
 
    Ordena *ordenar = new Ordena(col->pega_nome_arquivo_indice(),compacta);
 
     ordenar->executa(*col);
 
-   col->escreve_vocabulario();
+    col->escreve_vocabulario();
 
     delete col;
     delete ordenar;

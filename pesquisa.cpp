@@ -20,12 +20,12 @@
 #include <unordered_map>
 #include <cstring>
 #include <sstream>
+#include <queue>
 #include <ctime>
 
 #include "pesquisa.h"
 #include "CollectionReader.h"
 #include "util.h"
-#include "ranking.h"
 
 #define INTERSECAO 1
 #define UNIAO 2
@@ -38,10 +38,18 @@ using namespace RICPNS;
 
 const string Pesquisa::nome_arquivo_vocabulario = "../voc_compacta.txt";
 const string Pesquisa::nome_arquivo_indice = "../index_compacta.bin";
+const string Pesquisa::nome_tam_arquivos = "../tam_arquivos.txt";
 
 Pesquisa::Pesquisa(bool compacta,int rankopt){
     clock_t  t;
     col = new Colecao(compacta);
+
+    bool constroi_wd = true;
+
+    t = clock();
+    posicoes_palavras = col->carrega_vocabulario(nome_arquivo_vocabulario);
+    t = clock() - t;
+    cout << "Tempo Pesquisa::carrega_vocabulario: "<< ((float)t/CLOCKS_PER_SEC) << "s" << endl;
 
     if (compacta){
 	leitura = new LeCompacta(nome_arquivo_indice);
@@ -50,17 +58,17 @@ Pesquisa::Pesquisa(bool compacta,int rankopt){
     }
 
     if (rankopt == BM25CODIGO){
-	rank = new BM25();
+	rank = new BM25(nome_tam_arquivos,constroi_wd);
     }
 
     if (rankopt == VECTORCODIGO){
-	rank = new Vetorial();
+	rank = new Vetorial(nome_tam_arquivos,constroi_wd);
     }
-    t = clock();
-    posicoes_palavras = col->carrega_vocabulario(nome_arquivo_vocabulario);
-    t = clock() - t;
-    cout << "Tempo Pesquisa::carrega_vocabulario: "<< ((float)t/CLOCKS_PER_SEC) << "s" << endl;
 
+    t = clock();
+    rank->escreve_wd(leitura,posicoes_palavras,col->pega_ft());
+    t = clock() - t;
+    cout << "Tempo Pesquisa::carrega_wd: "<< ((float)t/CLOCKS_PER_SEC) << "s" << endl;
     
 }
 
@@ -98,7 +106,8 @@ void Pesquisa::intersecao(unordered_map<unsigned int,vector<unsigned int> >& r1,
 
 unordered_map<unsigned int,vector<unsigned int> > Pesquisa::executa_termo(string palavra){
     int i = col->pega_lexico_inteiro(palavra);
-    int pos_arquivo,freq,final_arquivo;
+    unsigned long int pos_arquivo;
+    int freq,final_arquivo;
     unsigned int doc;
     unordered_map<unsigned int,vector<unsigned int> > resultado;
 
@@ -108,6 +117,7 @@ unordered_map<unsigned int,vector<unsigned int> > Pesquisa::executa_termo(string
 	pos_arquivo = arquivo.tellg()*8;
 	arquivo.close();
     }else  pos_arquivo = posicoes_palavras[i];
+
 
     deque<unsigned int> v;
     vector<unsigned int> tmp;
@@ -196,9 +206,7 @@ vector<resultado_pesquisa_t> Pesquisa::executa(string palavra){
     //em resultado1 fica os documentos restantes que contem todos os termos
     //Entao agora calcular ranking
     rank->inicia_lista_docs(resultado);
-    //TODO: talvez deixar isso na classe
-    unordered_map<unsigned int,double> acc;
-    vector<resultado_pesquisa_t> ordem =  rank->computa(acc);
+    vector<resultado_pesquisa_t> ordem =  rank->computa();
 
     return ordem;
 }
@@ -212,20 +220,44 @@ void Pesquisa::imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,s
     unordered_map<unsigned int,string> listaLinks;
     queue<unsigned int> docid;
 
-    vector<
+    //ordenar por id
+    sort(resultado.begin(),resultado.end(),comparadocid);
+
+    vector<resultado_pesquisa_t>::iterator it_resultado = resultado.begin();
+    vector<resultado_pesquisa_t>::iterator it_resultado_fim = resultado.end();
+
+    while (it_resultado!=it_resultado_fim){
+	docid.push(it_resultado->docid);
+	it_resultado++;
+    }
+
 
     unsigned int i = 1;
     while(leitor->getNextDocument(doc)){
 
-	if (resultado){
+	if (docid.empty()) break;
+
+	if (docid.front() == i){
+	    listaLinks[docid.front()].reserve(doc.getURL().size());
+	    listaLinks[docid.front()] = doc.getURL();
+	    docid.pop();
 	   //cout << "DOCUMENTO " << i << endl;
 	   //cout << "[" << doc.getURL() << "]" << endl;
-	  // cout << doc.getText() << endl << endl;
+	   //cout << doc.getText() << endl << endl;
 	}
 	///tree<htmlcxx::HTML::Node> dom = parser.parseTree(doc.getText());
 
 
 	++i;
+    }
+
+    sort(resultado.begin(),resultado.end(),comparanota); 
+    it_resultado = resultado.begin();
+    it_resultado_fim = resultado.end();
+
+    while(it_resultado!=it_resultado_fim){
+	cout<<listaLinks[it_resultado->docid]<<endl;
+	it_resultado++;
     }
 }
  
@@ -244,11 +276,13 @@ int main(int argc,char** argv){
    int rankopt = VECTORCODIGO;
    p = new Pesquisa(compacta,rankopt);
    string palavra;
+   vector<resultado_pesquisa_t> r;
 
     while (getline(cin,palavra)){
 	cout << "Pesquisa das palavras: " << palavra << endl;
-	p->executa(palavra);
-        cout<<"teste4"<<endl;
+	r = p->executa(palavra);
+	p->imprime_docs_resultados(r,dir_entrada,nome_indice);
+	r.clear();
 	cout << endl;
     }
     return 0;
