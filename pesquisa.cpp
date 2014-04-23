@@ -32,13 +32,16 @@
 
 #define BM25CODIGO 1
 #define VECTORCODIGO 2
+#define MIXCODIGO 3
 
+#define POTENCIA 2
 using namespace std;
 using namespace RICPNS;
 
 const string Pesquisa::nome_arquivo_vocabulario = "../voc_compacta.txt";
 const string Pesquisa::nome_arquivo_indice = "../index_compacta.bin";
 const string Pesquisa::nome_tam_arquivos = "../tam_arquivos.txt";
+const string Pesquisa::nome_dir_saida = "saida/";
 
 Pesquisa::Pesquisa(bool compacta,int rankopt){
     clock_t  t;
@@ -58,11 +61,15 @@ Pesquisa::Pesquisa(bool compacta,int rankopt){
     }
 
     if (rankopt == BM25CODIGO){
-	rank = new BM25(nome_tam_arquivos,constroi_wd);
+	rank = new BM25(nome_tam_arquivos,constroi_wd,POTENCIA);
     }
 
     if (rankopt == VECTORCODIGO){
-	rank = new Vetorial(nome_tam_arquivos,constroi_wd);
+	rank = new Vetorial(nome_tam_arquivos,constroi_wd,POTENCIA);
+    }
+
+    if (rankopt == MIXCODIGO){
+	rank = new MIX(nome_tam_arquivos,constroi_wd,POTENCIA);
     }
 
     t = clock();
@@ -211,7 +218,7 @@ vector<resultado_pesquisa_t> Pesquisa::executa(string palavra){
     return ordem;
 }
 
-void Pesquisa::imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,string dir_entrada,string nome_indice)
+void Pesquisa::imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,string termos_pesquisa,string dir_entrada,string nome_indice)
 {
     //dado o resultado de uma consulta. Percorre os documentos da base 
     //para imprimir aqueles do resultado
@@ -219,6 +226,8 @@ void Pesquisa::imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,s
     Document doc;
     unordered_map<unsigned int,string> listaLinks;
     queue<unsigned int> docid;
+
+    ofstream arquivo_saida(nome_dir_saida+termos_pesquisa);
 
     //ordenar por id
     sort(resultado.begin(),resultado.end(),comparadocid);
@@ -256,9 +265,11 @@ void Pesquisa::imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,s
     it_resultado_fim = resultado.end();
 
     while(it_resultado!=it_resultado_fim){
-	cout<<listaLinks[it_resultado->docid]<<endl;
+	arquivo_saida<<listaLinks[it_resultado->docid]<<endl;
 	it_resultado++;
     }
+
+    arquivo_saida.close();
 }
  
 
@@ -281,7 +292,7 @@ int main(int argc,char** argv){
     while (getline(cin,palavra)){
 	cout << "Pesquisa das palavras: " << palavra << endl;
 	r = p->executa(palavra);
-	p->imprime_docs_resultados(r,dir_entrada,nome_indice);
+	p->imprime_docs_resultados(r,palavra,dir_entrada,nome_indice);
 	r.clear();
 	cout << endl;
     }

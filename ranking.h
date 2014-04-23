@@ -46,7 +46,7 @@ class Ranking{
 
     //parametros para o modelo BM25
     static const int K1 = 1;
-    static const float b = 0.75;
+    static const float b;
 
     //parametro para combinar os dois modelos 
     float p;
@@ -60,9 +60,12 @@ class Ranking{
     void inicia_lista_docs(unordered_map<unsigned int,vector<int> > lstdocs);
     void escreve_wd(Le* leitura,vector<unsigned long int> posicoes,vector<unsigned int> ft);
 
-    void carrega_wd(unordered_map<unsigned int,vector<unsigned int> > docs);
+    void carrega_wd(unordered_map<unsigned int,vector<int> > docs);
 
-    virtual vector<unsigned int> carrega_tam_arquivos(string tamarquivo,double& tamarquivo){};
+    virtual vector<unsigned int> carrega_tam_arquivos(string tamarquivo,double& mediatam)
+    {
+	vector<unsigned int> v;
+	return v;};
 
     //metodos virtuais puros
     virtual double computa_doc(vector<double> doc,vector<double> consulta,double wd) = 0;
@@ -72,7 +75,7 @@ class Ranking{
 
 class Vetorial: public Ranking{
     public:
-    Vetorial(string arquivotam,bool wd_constroi);
+    Vetorial(string arquivotam,bool wd_constroi,float p);
 
     double computa_doc(vector<double> doc,vector<double> consulta,double wd) ;
     vector<resultado_pesquisa_t> computa();
@@ -81,7 +84,7 @@ class Vetorial: public Ranking{
 
 class BM25: public Ranking{
     public:
-    BM25(string arquivotam,bool wd_constroi);
+    BM25(string arquivotam,bool wd_constroi,float p);
     double computa_doc(vector<double> doc,vector<double> consulta,double wd) ;
     vector<resultado_pesquisa_t> computa();
     vector<unsigned int> carrega_tam_arquivos(string arquivotam,double& mediatam);
@@ -89,7 +92,7 @@ class BM25: public Ranking{
 
 class MIX: public Ranking{
     public:
-    BM25(string arquivotam,bool wd_constroi);
+    MIX(string arquivotam,bool wd_constroi,float p);
     double computa_doc(vector<double> doc,vector<double> consulta,double wd) ;
     vector<resultado_pesquisa_t> computa();
 };
