@@ -37,9 +37,11 @@ int testepalavras = 0;
 using namespace std;
 using namespace RICPNS;
 
-const string Colecao::nome_arquivo_indice="../index_compacta.bin";
-const string Colecao::nome_arquivo_vocabulario="../voc_compacta.txt";
-const string Colecao::nome_tam_arquivos="../tam_arquivos.txt";
+const string Colecao::nome_arquivo_indice="index_compacta.bin";
+const string Colecao::nome_arquivo_vocabulario="voc_compacta.txt";
+const string Colecao::nome_info_arquivos="info_arquivos.txt";
+
+regex html_expr("(http|https|ftp|ftps)\:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(\/\S*)?");
 
 Colecao::~Colecao(){
 
@@ -55,6 +57,8 @@ Colecao::Colecao(bool compacta){
     unordered_map<string,vector<int> >::iterator it_voc_fim;
 
     buffer_chaves = new char*[TAM_VOC];
+    buffer_links = new char*[TAM_COL+1];
+
     contaPalavras = 1;
     ft.push_back(0);
 }
@@ -75,6 +79,48 @@ vector<unsigned int> Colecao::pega_ft(){
     return ft;
 }
 
+void Colecao::inicia_indice_link(string dirEntrada,string nomeIndice){
+
+    ifstream arquivo_link(dirEntrada+nomeIndice,ios::in);
+
+    clock_t  t;
+    t = clock();
+
+    if (arquivo_link.is_open()){
+	string linha;
+	int ii = 0;
+	float media_tam_link = 0;
+	while(!arquivo_link.eof()){
+	    getline(arquivo_link,linha);
+	   istringstream ss(linha);
+
+	   string link,folder,pos;
+	   ss >> link;
+	   ss >> folder;
+	   ss >> pos;
+	   ss >> pos;
+	   ss >> pos;
+
+	   int tam_link = link.size();
+	   buffer_links[ii] = new char[tam_link+1];
+	   if (buffer_links[ii]!=NULL){
+	       memset(buffer_links[ii],'\0',tam_link+1);
+	       copy(link.begin(),link.end(),buffer_links[ii]);
+	       indice_links[buffer_links[ii]] = vector<int>();
+	   }
+	   Fu.push_back(0);
+	   //media_tam_link += link.size();
+	   ii++;
+	}
+	cout<<"Iniciar o indice de links levou: "<<((float)t/CLOCKS_PER_SEC) << "s" << endl;
+	//cout<<" Em media os links possuem "<<(media_tam_link/945642)<<" caracteres "<<endl;
+	arquivo_link.close();
+    }else{
+	cout<<"Colecao::inicia_indice_link::Problema ao abrir o arquivo de indice"<<endl;
+    }
+
+}
+
 void Colecao::ler(string dirEntrada,string nomeIndice){
     CollectionReader* leitor = new CollectionReader(dirEntrada,nomeIndice);
     Document doc;
@@ -85,29 +131,35 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
 
     doc.clear();
 
+    inicia_indice_link(dirEntrada,nomeIndice);
+
     int i = 1;
     clock_t  t;
     t = clock();
-    ofstream arquivo_tam_arquivos (nome_tam_arquivos, ios::out|ios::app);
-
+    ofstream arquivo_info_arquivos (nome_info_arquivos, ios::out|ios::app);
     while(leitor->getNextDocument(doc)){
 
 	
 	//cout << "[" << doc.getURL() << "]" << endl;
 	tree<htmlcxx::HTML::Node> dom = parser.parseTree(doc.getText());
-        ler_arvore_dom(dom,i,termos_pos,arquivo_tam_arquivos);
+        ler_arvore_dom(dom,i,termos_pos,arquivo_info_arquivos,doc.getURL());
 
 	armazena_termos_doc(termos_pos,i);
 	    
 	//cout << dom << endl;
-
 	++i;
     }
+    //cout<<"Media tam Links: "<<(media_tam_link/945642)<<"  MAX tam "<<max_url_tam<<endl;
 
-    if (arquivo_tam_arquivos.is_open())
-        arquivo_tam_arquivos.close();
+    if (arquivo_info_arquivos.is_open())
+        arquivo_info_arquivos.close();
     t = clock() - t;
     cout << "Tempo Colecao::ler: "<< ((float)t/CLOCKS_PER_SEC) << "s" << endl;
+
+    t = clock();
+    escreve_info_links(dirEntrada,nomeIndice);
+    t = clock() - t;
+    cout << "Tempo Colecao::escreve_info_links: "<< ((float)t/CLOCKS_PER_SEC) << "s" << endl;
 
     cout << "Colecao::Numero triplas: " << testeuou << endl;
     cout << "Colecao::Numero de palavras: " << testepalavras << endl;
@@ -123,12 +175,13 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
     delete leitor;
 }
 
- void Colecao::ler_arvore_dom(tree<htmlcxx::HTML::Node> dom,int idArvore,unordered_map<int,vector<int> >& termos_pos,ofstream& arquivotam){
+ void Colecao::ler_arvore_dom(tree<htmlcxx::HTML::Node> dom,int idArvore,unordered_map<int,vector<int> >& termos_pos,ofstream& arquivotam,string url){
     // cout << "ler_arvore_dom " << idArvore << endl;
     tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
     tree<htmlcxx::HTML::Node>::iterator end = dom.end();
     vector<string> listaPalavras;
     char* palavra = new char[MAIOR_PALAVRA+2];
+    char* link_tmp = new char[MAIOR_LINK+2];
 
     //para guardar relacao (termo,lista_posicoes_doc)
 
@@ -137,7 +190,7 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
     //contador para saber em que posicao esta uma dada palavra
     int palavraPos = 0; 
 
-   // cout << "DOCUMENTO " << idArvore << " " << dom.size() << endl;
+   //cout << "DOCUMENTO " << idArvore << " " << dom.size() << endl;
 
 
     for (; it != end; ++it,i++)
@@ -147,6 +200,7 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
 	   if (i == 1) continue;
 
 	    bool isscript;
+	    bool islink;
 	    string tag(it->tagName());
 
 	    converteParaMinusculo(tag);
@@ -154,10 +208,32 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
 	    if (it->isTag()==1){
 		if (tag=="script") isscript = true;
 	        else isscript = false;
+
+		if (tag=="a" || tag=="A"){ 
+		    islink = true;
+		     it->parseAttributes();
+		     string link_href;
+		     link_href.reserve(MAIOR_LINK+2);
+		     link_href = it->attribute("href").second;
+		     if (regex_search(link_href,html_expr)){
+		         memset(link_tmp,'\0',MAIOR_LINK+2);
+			 snprintf(link_tmp,MAIOR_LINK,"%.200s",link_href.c_str());
+
+			 //esse aqui vai ajudar a computar o conjunto Bu
+			 if (indice_links.find(link_tmp) != indice_links.end()){
+			     indice_links[link_tmp].push_back(idArvore);
+			 }
+			 Fu[idArvore-1] =  Fu[idArvore-1] + 1;
+
+		     }
+		}
+		else islink = false;
 	    }
 
 
 	     if (it->isComment()==0 && it->isTag()==0 && isscript==0){
+		 //if (islink) 
+		 //    cout<<"Anchor text: "<< it->text()<<" Tag: "<<tag<<endl;
 
 		 listaPalavras.clear();
 
@@ -168,7 +244,7 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
 	          while(ii<listaPalavras.size()){
 	             // cout << "Percorrendo listaPalavras " << ii << endl;
 
-		      memset(palavra,0,MAIOR_PALAVRA+2);
+		      memset(palavra,'\0',MAIOR_PALAVRA+2);
 		      copy(listaPalavras[ii].begin(),listaPalavras[ii].end(),palavra);
 
 		      palavraPos++;
@@ -190,10 +266,11 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
 		          if (vocabulario.find(palavra) == vocabulario.end()){
 
 			       buffer_chaves[contaPalavras] = new char[tamanho_palavra+1];
-		               memset(buffer_chaves[contaPalavras],0,tamanho_palavra+1);
+		               memset(buffer_chaves[contaPalavras],'\0',tamanho_palavra+1);
 			       strncpy(buffer_chaves[contaPalavras],palavra,tamanho_palavra);
 
-			     // cout << "Armazenando " << contaPalavras << " " << buffer_chaves[contaPalavras] << endl;
+                             //if (idArvore==21)
+			     //cout << "Armazenando " << contaPalavras << " " << buffer_chaves[contaPalavras] << endl;
 
 	                      vocabulario[buffer_chaves[contaPalavras]] = contaPalavras;
 
@@ -230,6 +307,8 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
     }
     if (palavra!=NULL)
        delete[] palavra;
+    if (link_tmp!=NULL)
+	delete[] link_tmp;
 
     //cout << "Terminou ler_arvore_dom" << endl;
 
@@ -290,6 +369,138 @@ void Colecao::atualiza_vocabulario(int lex,unsigned long int pos){
     vocabulario[vocabulario_invertido[lex]] = pos;
 }
 
+vector<double> Colecao::computa_info_links(string dirEntrada,string nomeIndice){
+    //computa o pr das paginas
+    ifstream arquivo_link(dirEntrada+nomeIndice,ios::in);
+    vector<vector<int> > back_links;
+    char* link_tmp = new char [MAIOR_LINK+2];
+    vector<double> pr;
+
+    if (arquivo_link.is_open()){
+	//inicia matriz de backlinks
+	while(!arquivo_link.eof()){
+	    string linha;
+
+	    getline(arquivo_link,linha);
+
+            istringstream ss(linha);
+
+	    string link,folder,pos;
+	    ss >> link;
+	    ss >> folder;
+	    ss >> pos;
+	    ss >> pos;
+	    ss >> pos;
+
+	   int tam_link = link.size();
+	    if (link_tmp!=NULL){
+	        memset(link_tmp,'\0',MAIOR_LINK+2);
+	        snprintf(link_tmp,MAIOR_LINK,"%.200s",link.c_str());
+		back_links.push_back(indice_links[link_tmp]);
+	    }
+
+	    //para cada doc inicializar o rank como 1/numero de documentos
+	   // pr.push_back(1/num_docs);
+	   pr.push_back(1); 
+
+	}
+
+
+	vector<double> old_pr(pr);
+
+	int ii = 0;
+	//a partir dos backlinks calcular o pagerank
+	while(ii< ITER_PR){//calcular x vezes para cad a pagina
+	     int jj = 0;
+	     //iterando sobre cada pagina
+	     while (jj<back_links.size()){
+		// cout<<" --> "<<jj<<" "<<back_links.size()<<endl;
+		 vector<int>::iterator it_bl_ii = back_links[jj].begin();
+		 vector<int>::iterator it_bl_ii_fim = back_links[jj].end();
+	         //iterando sobre o conjunto Bu de cada pagina
+		 double pr_valor = 0;
+		 while (it_bl_ii!= it_bl_ii_fim){
+		     int k = (*it_bl_ii)-1;
+		     if (Fu[k]!=0)
+		         pr_valor +=  old_pr[k]/Fu[k];
+		     it_bl_ii++;
+		 }
+		 pr_valor = D_FACTOR*pr_valor; 
+		 pr_valor = (1-D_FACTOR) + pr_valor;
+		 pr[jj] = pr_valor; 
+		 jj++;
+	     }
+	     old_pr = pr;
+	     ii++;
+	}
+
+    }else{
+	cout<<"Colecao::computa_info_links Problema ao abrir arquivo"<<endl;
+    }
+
+    //TODO: Algum lugar com segmentation fault e divisao por zero em pr
+    if (link_tmp!=NULL) delete[] link_tmp;
+
+    return pr;
+}
+
+void Colecao::escreve_info_links(string dirEntrada,string nomeIndice){
+
+    ofstream arquivo(nome_info_arquivos + ".tmp",ios::out|ios::app);
+
+    if (arquivo.is_open()){
+	ifstream arquivo_antigo(nome_info_arquivos,ios::in);
+	vector<double> pr_links = computa_info_links(dirEntrada,nomeIndice);
+        int ii = 0;
+	while (!arquivo_antigo.eof()){
+	    string linha;
+
+	    getline(arquivo_antigo,linha);
+
+	    istringstream ss(linha);
+
+	    int tam;
+	    ss >> tam;
+
+	    
+	    arquivo << tam << " "<<pr_links[ii]<<endl;
+
+	    ii++;
+	}
+
+	arquivo.close();
+	arquivo_antigo.close();
+        if (buffer_links !=NULL){
+	   int n = indice_links.size(); 
+           for(int i=0;i<n;i++){
+	      if (buffer_links[i] !=NULL) 
+	          delete[] buffer_links[i];
+	   }
+           delete[] buffer_links;
+        } 
+	string nome_arquivo_antigo = nome_info_arquivos + ".tmp";
+
+        char narquivo[100]; 
+        memset(narquivo,0,100);
+        strcpy(narquivo,nome_info_arquivos.c_str());
+
+        char narquivo_antigo[100]; 
+        memset(narquivo_antigo,0,100);
+        strcpy(narquivo_antigo,nome_arquivo_antigo.c_str());
+	//    cout<<"Removendo: "<<narquivo<<endl;
+	//    cout<<"Renomeando "<<narquivo_antigo<<" para "<<narquivo<<endl;
+
+        if (narquivo!=NULL){
+            remove(narquivo);
+	}         
+	if (narquivo_antigo!=NULL && narquivo!=NULL){
+           rename(narquivo_antigo,narquivo);
+	} 
+    }else{
+	cout<<"Colecao::escreve_info_links Problema ao abrir arquivo"<<endl;
+    }
+}
+
 void Colecao::escreve_vocabulario(){
     ofstream arquivo (nome_arquivo_vocabulario, ios::out|ios::app);
     if (arquivo.is_open()){
@@ -342,14 +553,14 @@ vector<unsigned long int> Colecao::carrega_vocabulario(const string arquivo_voca
 	    ft_individual = strtoul(tokens[2].c_str(),NULL,0);
 
             //cout<<"--> "<<i<<" "<<pos<<" "<<ft_individual<<endl;
-	    memset(palavra,0,MAIOR_PALAVRA+2);
+	    memset(palavra,'\0',MAIOR_PALAVRA+2);
             copy(lex.begin(),lex.end(),palavra);
 
 	    if (palavra!= NULL){
 		tamanho_palavra = strlen(palavra)+1;
 	        buffer_chaves[i] = new char[tamanho_palavra+1];
 
-		memset(buffer_chaves[i],0,tamanho_palavra+1);
+		memset(buffer_chaves[i],'\0',tamanho_palavra+1);
                 strncpy(buffer_chaves[i],palavra,tamanho_palavra);
 
 	        vocabulario[buffer_chaves[i]] = i;
@@ -376,7 +587,7 @@ vector<unsigned long int> Colecao::carrega_vocabulario(const string arquivo_voca
 
 unsigned long int Colecao::pega_lexico_inteiro(string p){
     char* palavra = new char[p.size()+2];
-    memset(palavra,0,p.size()+1);
+    memset(palavra,'\0',p.size()+1);
 
     unsigned long int lex;
 

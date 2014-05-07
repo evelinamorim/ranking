@@ -59,6 +59,7 @@ class Ranking{
 
     void inicia_lista_docs(unordered_map<unsigned int,vector<int> > lstdocs);
     void escreve_wd(Le* leitura,vector<unsigned long int> posicoes,vector<unsigned int> ft);
+    const int pega_num_docs();
 
     void carrega_wd(unordered_map<unsigned int,vector<int> > docs);
 

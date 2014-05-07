@@ -29,12 +29,19 @@
 #define __UTIL_H_
 
 #define MAIOR_PALAVRA 20
+#define MAIOR_LINK 200
 #define TAM_VOC 20000000
 //TODO: depois mudar este tamanho. No momento eh soh para teste
 #define TAMANHO_RUN 10000000
 #define QTD_RUNS 5000
+#define TAM_COL 945642
 
 #define TAM_BUFFER_ORD 100000
+
+//constante dumping factor do pagerank
+#define D_FACTOR 0.85
+//constante definida como numero de iteracoes que o pagerank deve executar
+#define ITER_PR 50
 
 using namespace std;
 

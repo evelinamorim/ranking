@@ -40,14 +40,14 @@ using namespace RICPNS;
 
 const string Pesquisa::nome_arquivo_vocabulario = "../voc_compacta.txt";
 const string Pesquisa::nome_arquivo_indice = "../index_compacta.bin";
-const string Pesquisa::nome_tam_arquivos = "../tam_arquivos.txt";
+const string Pesquisa::nome_info_arquivos = "../info_arquivos.txt";
 const string Pesquisa::nome_dir_saida = "saida/";
 
 Pesquisa::Pesquisa(bool compacta,int rankopt){
     clock_t  t;
     col = new Colecao(compacta);
 
-    bool constroi_wd = true;
+    bool constroi_wd = false;
 
     t = clock();
     posicoes_palavras = col->carrega_vocabulario(nome_arquivo_vocabulario);
@@ -61,15 +61,15 @@ Pesquisa::Pesquisa(bool compacta,int rankopt){
     }
 
     if (rankopt == BM25CODIGO){
-	rank = new BM25(nome_tam_arquivos,constroi_wd,POTENCIA);
+	rank = new BM25(nome_info_arquivos,constroi_wd,POTENCIA);
     }
 
     if (rankopt == VECTORCODIGO){
-	rank = new Vetorial(nome_tam_arquivos,constroi_wd,POTENCIA);
+	rank = new Vetorial(nome_info_arquivos,constroi_wd,POTENCIA);
     }
 
     if (rankopt == MIXCODIGO){
-	rank = new MIX(nome_tam_arquivos,constroi_wd,POTENCIA);
+	rank = new MIX(nome_info_arquivos,constroi_wd,POTENCIA);
     }
 
     t = clock();
@@ -160,8 +160,8 @@ vector<resultado_pesquisa_t> Pesquisa::executa(string palavra){
     int tipo_consulta;
     consulta =  processa_consulta(palavra,tipo_consulta);
 
-    for_each(consulta.begin(),consulta.end(),imprime_string);
-    cout<< endl;
+    //for_each(consulta.begin(),consulta.end(),imprime_string);
+    //cout<< endl;
 
     unordered_map<unsigned int,vector<unsigned int> > resultado_atual,resultado_antigo;
     
@@ -171,8 +171,10 @@ vector<resultado_pesquisa_t> Pesquisa::executa(string palavra){
     unordered_map<unsigned int,vector<int> > resultado;
 
     while(it_consulta!=it_consulta_fim){
+	//perceba que resultado_atual guarda resultado do i-esimo termo enquanto 
+	//resultado_antigo guarda
 	resultado_atual = executa_termo(*it_consulta);
-	cout<<"Consulta do termo "<<*it_consulta<<" possui "<<resultado_atual.size()<<" documentos."<<endl;
+	//cout<<"Consulta do termo "<<*it_consulta<<" possui "<<resultado_atual.size()<<" documentos."<<endl;
 
 	if (resultado_antigo.size()!=0){ 
 	    intersecao(resultado_atual,resultado_antigo);
@@ -193,10 +195,14 @@ vector<resultado_pesquisa_t> Pesquisa::executa(string palavra){
 		resultado.erase(*it_irr);
 	    }
 
-	    unordered_map<unsigned int,vector<unsigned int> >::iterator it_atual;
+	    unordered_map<unsigned int,vector<unsigned int> >::iterator it_antigo;
 	    //incluindo a frequencia de termos atuais
-	    for (it_atual=resultado_atual.begin();it_atual!=resultado_atual.end();it_atual++){
-		resultado[it_atual->first].push_back(it_atual->second.size());
+	    for (it_antigo=resultado_antigo.begin();it_antigo!=resultado_antigo.end();it_antigo++){
+		//resultado antigo neste momento guarda o resultado da intersecao,
+		//assim resultado atual deve conter documentos com ids it_antigo->first
+		//Apenas estou acrescentando a info(i-esimo termo da consulta tokenizada) 
+		//de resultado_atual a resultado
+		resultado[it_antigo->first].push_back(resultado_atual[it_antigo->first].size());
 	    }
 
 	}else{
@@ -207,6 +213,7 @@ vector<resultado_pesquisa_t> Pesquisa::executa(string palavra){
 
 	//TODO: sera que copia?
 	resultado_antigo = resultado_atual;
+	//cout<<"Tam resultado antigo: "<<resultado_antigo.size() <<" Tam resultado atual: "<< resultado_atual.size()<<endl;
 	it_consulta++;
     }
 
@@ -218,11 +225,12 @@ vector<resultado_pesquisa_t> Pesquisa::executa(string palavra){
     return ordem;
 }
 
-void Pesquisa::imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,string termos_pesquisa,string dir_entrada,string nome_indice)
+void Pesquisa::imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,string termos_pesquisa,string nome_indice)
 {
     //dado o resultado de uma consulta. Percorre os documentos da base 
     //para imprimir aqueles do resultado
-    CollectionReader* leitor = new CollectionReader(dir_entrada,nome_indice);
+    //CollectionReader* leitor = new CollectionReader(dir_entrada,nome_indice);
+    ifstream indice_links(nome_indice);
     Document doc;
     unordered_map<unsigned int,string> listaLinks;
     queue<unsigned int> docid;
@@ -242,13 +250,24 @@ void Pesquisa::imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,s
 
 
     unsigned int i = 1;
-    while(leitor->getNextDocument(doc)){
+    int n = rank->pega_num_docs();
+    float media_tam_links = 0;
+    while(i<n){
+	string linha;
+	getline(indice_links,linha);
+	istringstream ss(linha);
+
+	string link,pos;
+	ss >> link;
+	ss >> pos;
 
 	if (docid.empty()) break;
 
 	if (docid.front() == i){
-	    listaLinks[docid.front()].reserve(doc.getURL().size());
-	    listaLinks[docid.front()] = doc.getURL();
+	    listaLinks[docid.front()].reserve(link.size());
+	    listaLinks[docid.front()] = link;
+	    //cout<<"==> "<<link<<endl;
+	    //cout<<"--> "<<listaLinks[docid.front()]<<endl;
 	    docid.pop();
 	   //cout << "DOCUMENTO " << i << endl;
 	   //cout << "[" << doc.getURL() << "]" << endl;
@@ -266,9 +285,10 @@ void Pesquisa::imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,s
 
     while(it_resultado!=it_resultado_fim){
 	arquivo_saida<<listaLinks[it_resultado->docid]<<endl;
+	//cout<<"LInk: "<< listaLinks[it_resultado->docid]<<" Nota "<<it_resultado->nota<<endl;
 	it_resultado++;
     }
-
+    indice_links.close();
     arquivo_saida.close();
 }
  
@@ -278,21 +298,30 @@ int main(int argc,char** argv){
     Pesquisa* p;
     bool compacta = false;
     string dir_entrada = argv[1];
-    string nome_indice = argv[2];
+    string nome_indice = dir_entrada + argv[2];
 
     if (argc == 4){
 	if (strncmp(argv[3],"-c",2)==0) compacta = true;
     }
 
-   int rankopt = VECTORCODIGO;
+   int rankopt = MIXCODIGO;
    p = new Pesquisa(compacta,rankopt);
    string palavra;
    vector<resultado_pesquisa_t> r;
 
+   clock_t t;
     while (getline(cin,palavra)){
+	t = clock();
 	cout << "Pesquisa das palavras: " << palavra << endl;
 	r = p->executa(palavra);
-	p->imprime_docs_resultados(r,palavra,dir_entrada,nome_indice);
+	t = clock()-t;
+	cout<<" Tempo "<< ((float)t/CLOCKS_PER_SEC) <<"s"<<endl;
+
+	t = clock();
+	p->imprime_docs_resultados(r,palavra,nome_indice);
+	t = clock()-t;
+	cout<<" Exibicao dos resultados leva "<<((float)t/CLOCKS_PER_SEC) <<"s"<<endl;
+
 	r.clear();
 	cout << endl;
     }

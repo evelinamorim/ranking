@@ -24,6 +24,7 @@
 #include <sstream>
 #include <iomanip>
 #include <algorithm>
+#include <bitset>
 
 #include "ranking.h"
 
@@ -38,6 +39,10 @@ bool comparadocid1(resultado_pesquisa_t t1,resultado_pesquisa_t t2){
 Ranking::Ranking(string arquivotam,bool wd_constroi,float potencia):nome_tam_arquivos(arquivotam){
     flag_wd = wd_constroi;
     p = potencia;
+}
+
+const int Ranking::pega_num_docs(){
+    return num_docs;
 }
 
 void Ranking::inicia_lista_docs(unordered_map<unsigned int,vector<int> > lstdocs){
@@ -373,6 +378,9 @@ vector<resultado_pesquisa_t> MIX::computa(){
     rbm25 = rankBM25.computa();
     rvet = rankVetorial.computa();
 
+    bitset<num_docs> docs_iguais;
+    docs_iguais.reset();
+
     //sort(rbm25.begin(),rbm25.end(),comparadocid1);
     //sort(rvet.begin(),rvet.end(),comparadocid1);
 
@@ -384,20 +392,48 @@ vector<resultado_pesquisa_t> MIX::computa(){
     vector<resultado_pesquisa_t>::iterator it_rvet_fim = rvet.end();
 
     vector<resultado_pesquisa_t> docs_diff;
+    int ii;
     while(it_rbm25!=it_rbm25_fim){
          it_rvet = rvet.begin();
-	 resultado_pesquisa_t
-	 docs_diff
+
+	 resultado_pesquisa_t tt_bm25;
+	 tt_bm25.docid = it_rbm25->docid;
+	 tt_bm25.nota = it_rbm25->nota;
+	 docs_diff.push_back(tt_bm25);
+
+	 ii = 0;
 	 while(it_rvet!=it_rvet_fim){
 	     if (it_rvet->docid == it_rbm25->docid){
 		  tt.docid = it_rvet->docid;
 		  tt.nota = (pow(it_rvet->nota,p)+pow(it_rbm25->nota,p))/2;
 		  tt.nota = pow(tt.nota,(1.0/p));
 		  rordenado.push_back(tt);
+		  docs_diff.pop_back();
+		  docs_iguais.set(ii);
+		  break;
 	     }
+	     ii++;
 	     it_rvet++;
 	 }
+
+	 if (!docs_diff.empty()){
+	     tt.docid = docs_diff.back().docid;
+	     tt.nota =  (pow(docs_diff.back().nota,p))/2;
+             tt.nota = pow(tt.nota,(1.0/p));
+	     docs_diff.pop_back();
+             rordenado.push_back(tt);
+	 }
 	 it_rbm25++;
+    }
+
+    ii = 0;
+    while(ii<docs_iguais.size()){
+	if (!docs_iguais.test(ii)){
+	    tt.docid = rvet[ii].docid;
+	    tt.nota = (pow(rvet[ii].nota,p))/2;
+            tt.nota = pow(tt.nota,(1.0/p));
+	}
+	ii++;
     }
     
     return rordenado;

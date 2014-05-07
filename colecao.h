@@ -24,6 +24,7 @@
 #include <cstring>
 #include <fstream>
 #include <sstream>
+#include <utility> 
 
 using namespace std;
 
@@ -85,16 +86,20 @@ class Colecao{
     //TODO: nao carregar tudo na memoria?
     //vector<Documento> lista;
     unordered_map<char*,unsigned long int,Hash_Func,eqstr> vocabulario;
+    unordered_map<char*,vector<int>,Hash_Func,eqstr> indice_links;
     unordered_map<unsigned long int,char*> vocabulario_invertido;
 
     vector<unsigned int> ft;
+    vector<int> Fu;
 
     char** buffer_chaves;
+    char** buffer_links;
     int contaPalavras;
 
     static const string nome_arquivo_vocabulario;
     static const string nome_arquivo_indice;
-    static const string nome_tam_arquivos;
+    static const string nome_info_arquivos;
+    static const int num_docs = 945642;
 
     Escreve *escrita;
 
@@ -102,10 +107,13 @@ class Colecao{
     Colecao(bool compacta);
     ~Colecao();
     void ler(string dirEntrada,string nomeIndice);
-    void ler_arvore_dom(tree<htmlcxx::HTML::Node> arvoreDom,int doc,unordered_map<int,vector<int> >& termos_pos,ofstream& arquivo);
+    void inicia_indice_link(string dirEntrada,string nomeIndice);
+    void ler_arvore_dom(tree<htmlcxx::HTML::Node> arvoreDom,int doc,unordered_map<int,vector<int> >& termos_pos,ofstream& arquivo,string url);
     vector<string> lerLexicais(string sentenca);
     void armazena_termos_doc(unordered_map<int,vector<int> >& termos_pos,int doc);
     const string pega_nome_arquivo_indice();
+    void escreve_info_links(string dirEntrada,string nomeIndice);
+    vector<double> computa_info_links(string dirEntrada,string nomeIndice);
 
     int pega_tamanho_vocabulario();
     int pega_tamanho_vocabulario_invertido();

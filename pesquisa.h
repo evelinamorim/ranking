@@ -53,7 +53,7 @@ class Pesquisa{
     Pesquisa(bool compact,int rankopt);
     unordered_map<unsigned int,vector<unsigned int> > executa_termo(string palavra);
     vector<resultado_pesquisa_t> executa(string palavra);
-    void imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,string termos_pesquisa,string dir_entrada,string nome_indice);
+    void imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,string termos_pesquisa,string nome_indice);
     vector<string> processa_consulta(string consulta,int& tipo_consulta);
     void intersecao(unordered_map<unsigned int,vector<unsigned int> >& r1, unordered_map<unsigned int,vector<unsigned int> >& r2);
 };

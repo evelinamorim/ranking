@@ -46,13 +46,13 @@ int main(int argc,char** argv){
    
    col->ler(dirEntrada,nomeIndice);
 
-   Ordena *ordenar = new Ordena(col->pega_nome_arquivo_indice(),compacta);
+  // Ordena *ordenar = new Ordena(col->pega_nome_arquivo_indice(),compacta);
 
-    ordenar->executa(*col);
+   // ordenar->executa(*col);
 
-    col->escreve_vocabulario();
+    //col->escreve_vocabulario();
 
     delete col;
-    delete ordenar;
+    //delete ordenar;
     return 0;
 }
