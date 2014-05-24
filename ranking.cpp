@@ -25,8 +25,10 @@
 #include <iomanip>
 #include <algorithm>
 #include <bitset>
+#include <limits>
 
 #include "ranking.h"
+#include "util.h"
 
 using namespace std;
 const string Ranking::nome_wd_arquivo = "wd_compacta.txt";
@@ -36,9 +38,11 @@ bool comparadocid1(resultado_pesquisa_t t1,resultado_pesquisa_t t2){
     return t1.docid<t2.docid;
 }
 
-Ranking::Ranking(string arquivotam,bool wd_constroi,float potencia):nome_tam_arquivos(arquivotam){
+Ranking::Ranking(string arquivotam,bool wd_constroi,bool pr_constroi,float potencia):nome_tam_arquivos(arquivotam){
     flag_wd = wd_constroi;
     p = potencia;
+    flag_pr = pr_constroi;
+    max_nota = numeric_limits<double>::min();
 }
 
 const int Ranking::pega_num_docs(){
@@ -154,9 +158,59 @@ void Ranking::carrega_wd(unordered_map<unsigned int,vector<int> > docs){
     }
 }
 
+vector<unsigned int> Ranking::carrega_info_arquivos(string arquivotam,double& mediatam){
+
+    //vetor posicoes guarda as posicoes das palavras do dicionario no disco
+    ifstream fd_arquivotam(arquivotam,ios::in);
+    string linha;
+    vector<unsigned int> v;
+    mediatam = 0;
+    double max_pr = numeric_limits<double>::min();
+
+    if (fd_arquivotam.is_open()){
+	while(getline(fd_arquivotam,linha)){
+	   unsigned int tam_individual;
+	   double pr_individual;
+	   istringstream ss(linha);
+	   ss >> tam_individual;
+	   ss >> pr_individual;
+	   v.push_back(tam_individual);
+	   if (pr_individual> max_pr)
+	       max_pr = pr_individual;
+	   pr.push_back(pr_individual);
+	   mediatam += tam_individual;
+	}
+
+	int tam_pr = pr.size();
+	for (int i =0;i<tam_pr;i++){
+	    //TOD: sera que normaliza?
+	    pr[i] = max_pr/(1+exp(-log(pr[i])+b));
+		
+	}
+	//cout<<" Carregou "<<pr.size()<<endl;
+        mediatam = mediatam/v.size();
+    }else{
+	cout<<"BM25::Nao foi possivel carregar o arquivo com o tamanho dos arquivos"<<endl;
+    }
+
+
+    return v;
+}
+
+void Ranking::normaliza_vetor(vector<resultado_pesquisa_t>& v){
+     int tam_v = v.size();
+     for(int i = 0;i<tam_v;i++){
+	 v[i].nota = v[i].nota/max_nota;
+     }
+}
+
+vector<double> Ranking::pega_pr(){
+    return pr;
+}
+
 /* Modelo Vetorial */
 
-Vetorial::Vetorial(string arquivotam,bool wd_constroi,float potencia):Ranking(arquivotam,wd_constroi,potencia){}
+Vetorial::Vetorial(string arquivotam,bool wd_constroi,bool pr_constroi,float potencia):Ranking(arquivotam,wd_constroi,pr_constroi,potencia){}
 
 double Vetorial::computa_doc(vector<double> doc, vector<double> consulta,double wd){
     //doc: peso de cada termo do documento
@@ -164,9 +218,12 @@ double Vetorial::computa_doc(vector<double> doc, vector<double> consulta,double 
 
     vector<double> resultado(doc);
 
-    transform(doc.begin(),doc.end(),consulta.begin(),resultado.begin(),multiplies<double>());
-    double numerador = accumulate(resultado.begin(),resultado.end(),0);
+    double numerador = 0.0;
+    int tam_doc = doc.size();
 
+    for(int i=0;i<tam_doc;i++){
+	numerador += doc[i]*consulta[i];
+    }
 
     return (numerador/sqrt(wd));
 }
@@ -179,6 +236,10 @@ vector<resultado_pesquisa_t> Vetorial::computa(){
     vector<resultado_pesquisa_t> rordenado;
 
     carrega_wd(lista_docs);
+
+    double mediatam;
+    vector<unsigned int> lista_tam; 
+    if (flag_pr) lista_tam = carrega_info_arquivos(nome_tam_arquivos,mediatam);
 
     cout<<"Ranking::Tamanho da lista de documentos "<<lista_docs.size()<<endl;
 
@@ -245,23 +306,31 @@ vector<resultado_pesquisa_t> Vetorial::computa(){
 	double r = computa_doc(it_tfdocs->second,tf_consulta,wd[it_tfdocs->first]);
 	tt.docid = it_tfdocs->first;
 	tt.nota = r;
+	if (r > max_nota){
+	    max_nota = r;
+	}
 	rordenado.push_back(tt);
 	it_tfdocs++;
     }
 
+    normaliza_vetor(rordenado);
     return rordenado;
 }
 
 /* Modelo BM25  */
 
-BM25::BM25(string arquivotam,bool wd_constroi,float potencia):Ranking(arquivotam,wd_constroi,potencia){}
+BM25::BM25(string arquivotam,bool wd_constroi,bool pr_constroi,float potencia):Ranking(arquivotam,wd_constroi,pr_constroi,potencia){}
 
 double BM25::computa_doc(vector<double> doc, vector<double> consulta,double wd){
 
    vector<double> resultado(doc);
 
-   transform(doc.begin(),doc.end(),consulta.begin(),resultado.begin(),multiplies<double>());
-   double numerador = accumulate(resultado.begin(),resultado.end(),0);
+   double numerador = 0.0;
+   int i;
+   int tam_doc = doc.size();
+   for(i=0;i<tam_doc;i++){
+       numerador += doc[i]*consulta[i];
+   }
 
    return numerador;
 }
@@ -273,8 +342,11 @@ vector<resultado_pesquisa_t> BM25::computa(){
 
     if (lista_docs.size()==0) return rordenado;
 
+    cout<<"Ranking::Tamanho da lista de documentos "<<lista_docs.size()<<endl;
     double mediatam;
-    vector<unsigned int> lista_tam = carrega_tam_arquivos(nome_tam_arquivos,mediatam);
+    vector<unsigned int> lista_tam; 
+    if (flag_pr) lista_tam = carrega_info_arquivos(nome_tam_arquivos,mediatam);
+   // cout<<" Testando dentro do BM25 "<< pr.size()<<endl;
 
     unordered_map<unsigned int,vector<int> >::iterator it_docs;
     unordered_map<unsigned int,vector<int> >::iterator it_docs_fim;
@@ -323,43 +395,22 @@ vector<resultado_pesquisa_t> BM25::computa(){
 	double r = computa_doc(it_bij->second,idf,0);
 	tt.docid = it_bij->first;
 	tt.nota = r;
+	if (r > max_nota){
+	    max_nota = r;
+	}
 	rordenado.push_back(tt);
 	it_bij++;
 
     }
 
+    normaliza_vetor(rordenado);
     return rordenado;
-
 }
 
-vector<unsigned int> BM25::carrega_tam_arquivos(string arquivotam,double& mediatam){
-
-    //vetor posicoes guarda as posicoes das palavras do dicionario no disco
-    ifstream fd_arquivotam(arquivotam,ios::in);
-    string linha;
-    vector<unsigned int> v;
-    mediatam = 0;
-
-    if (fd_arquivotam.is_open()){
-	while(getline(fd_arquivotam,linha)){
-	   unsigned int tam_individual;
-	   istringstream ss(linha);
-	   ss >> tam_individual;
-	   v.push_back(tam_individual);
-	   mediatam += tam_individual;
-	}
-        mediatam = mediatam/v.size();
-    }else{
-	cout<<"BM25::Nao foi possivel carregar o arquivo com o tamanho dos arquivos"<<endl;
-    }
-
-
-    return v;
-}
 
 /* Ranking que combina outros rankings */
 
-MIX::MIX(string arquivotam,bool wd_constroi,float potencia):Ranking(arquivotam,wd_constroi,potencia){}
+MIX::MIX(string arquivotam,bool wd_constroi,bool pr_constroi,float potencia):Ranking(arquivotam,wd_constroi,pr_constroi,potencia){}
 
 double MIX::computa_doc(vector<double> doc, vector<double> consulta,double wd){
 
@@ -371,12 +422,18 @@ vector<resultado_pesquisa_t> MIX::computa(){
 
     if (lista_docs.size()==0) return rordenado;
 
+    cout<<"Ranking::Tamanho da lista de documentos "<<lista_docs.size()<<endl;
     //rankings a serem usados
-    BM25 rankBM25 = BM25(nome_tam_arquivos,flag_wd,p);
-    Vetorial rankVetorial = Vetorial(nome_tam_arquivos,flag_wd,p);
+    BM25 rankBM25 = BM25(nome_tam_arquivos,flag_wd,flag_pr,p);
+    rankBM25.inicia_lista_docs(lista_docs);
+
+
+    Vetorial rankVetorial = Vetorial(nome_tam_arquivos,flag_wd,false,p);
+    rankVetorial.inicia_lista_docs(lista_docs);
 
     rbm25 = rankBM25.computa();
     rvet = rankVetorial.computa();
+    pr = rankBM25.pega_pr();
 
     bitset<num_docs> docs_iguais;
     docs_iguais.reset();
@@ -405,11 +462,20 @@ vector<resultado_pesquisa_t> MIX::computa(){
 	 while(it_rvet!=it_rvet_fim){
 	     if (it_rvet->docid == it_rbm25->docid){
 		  tt.docid = it_rvet->docid;
-		  tt.nota = (pow(it_rvet->nota,p)+pow(it_rbm25->nota,p))/2;
-		  tt.nota = pow(tt.nota,(1.0/p));
+		  double stat_nota = ((pow(it_rvet->nota,p)+pow(it_rbm25->nota,p))+pow((num_docs*pr[tt.docid-1]),p))/3.0;
+
+		  /*if (stat_nota!=0)
+		      tt.nota = (stat_nota+pow(ALPHA*pr[tt.docid-1],p))/3;
+		  else tt.nota = 0;*/
+
+		  //TODO: ainda acho que stat_nota nao deveria ser 0?
+		  //cout<<"1 --> "<< tt.nota << " " << stat_nota << " " << it_rbm25->nota<<" "<<it_rvet->nota<< endl;
+		  tt.nota = pow(stat_nota,(1.0/p));
+		  //tt.nota = pow(stat_nota,(1.0/p));
+		  //cout<<"2 --> "<< tt.nota <<" "<< stat_nota << " "<< (num_docs*pr[tt.docid-1])<< " "<<tt.docid << endl;
 		  rordenado.push_back(tt);
 		  docs_diff.pop_back();
-		  docs_iguais.set(ii);
+		  docs_iguais.set(tt.docid);
 		  break;
 	     }
 	     ii++;
@@ -418,8 +484,12 @@ vector<resultado_pesquisa_t> MIX::computa(){
 
 	 if (!docs_diff.empty()){
 	     tt.docid = docs_diff.back().docid;
-	     tt.nota =  (pow(docs_diff.back().nota,p))/2;
+	     double stat_nota = (pow(docs_diff.back().nota,p)+pow((num_docs*pr[tt.docid-1]),p))/3.0;
+	     /*if (stat_nota!=0)
+	         tt.nota =  (stat_nota+pow(ALPHA*pr[tt.docid-1],p))/3;
+	     else tt.nota = 0;*/
              tt.nota = pow(tt.nota,(1.0/p));
+             //tt.nota = pow(tt.nota,(1.0/p));
 	     docs_diff.pop_back();
              rordenado.push_back(tt);
 	 }
@@ -427,14 +497,20 @@ vector<resultado_pesquisa_t> MIX::computa(){
     }
 
     ii = 0;
-    while(ii<docs_iguais.size()){
-	if (!docs_iguais.test(ii)){
+    while(ii<rvet.size()){
+	//cout<<">> "<<ii<<" "<<docs_iguais.size()<<" "<<rvet.size()<<" "endl;
+	if (!docs_iguais.test(rvet[ii].docid)){
 	    tt.docid = rvet[ii].docid;
-	    tt.nota = (pow(rvet[ii].nota,p))/2;
+	    double stat_nota = (pow(rvet[ii].nota,p) +pow((num_docs*pr[tt.docid-1]),p))/3.0;
+	    /* if (stat_nota!=0){
+	       tt.nota = (stat_nota + pow(ALPHA*pr[tt.docid-1],p))/2;
+	    }
+            else tt.nota = 0;*/ 
             tt.nota = pow(tt.nota,(1.0/p));
+            //tt.nota = pow(tt.nota,(1.0/p));
 	}
 	ii++;
+
     }
-    
     return rordenado;
 }

@@ -21,6 +21,7 @@ int testepalavras = 0;
 #include "CollectionReader.h"
 #include "util.h"
 #include "ordena.h"
+#include "Url.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -41,7 +42,7 @@ const string Colecao::nome_arquivo_indice="index_compacta.bin";
 const string Colecao::nome_arquivo_vocabulario="voc_compacta.txt";
 const string Colecao::nome_info_arquivos="info_arquivos.txt";
 
-regex html_expr("(http|https|ftp|ftps)\:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(\/\S*)?");
+//regex html_expr("(http|https|ftp|ftps)\:\/\/[a-zA-Z0-9\-\.]+\.[a-zA-Z]{2,3}(\/\S*)?");
 
 Colecao::~Colecao(){
 
@@ -175,6 +176,7 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
     delete leitor;
 }
 
+
  void Colecao::ler_arvore_dom(tree<htmlcxx::HTML::Node> dom,int idArvore,unordered_map<int,vector<int> >& termos_pos,ofstream& arquivotam,string url){
     // cout << "ler_arvore_dom " << idArvore << endl;
     tree<htmlcxx::HTML::Node>::iterator it = dom.begin();
@@ -182,7 +184,7 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
     vector<string> listaPalavras;
     char* palavra = new char[MAIOR_PALAVRA+2];
     char* link_tmp = new char[MAIOR_LINK+2];
-
+    oneurl curl;
     //para guardar relacao (termo,lista_posicoes_doc)
 
     vector<int> lpos;
@@ -205,7 +207,7 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
 
 	    converteParaMinusculo(tag);
 
-	    if (it->isTag()==1){
+	    if (it->isTag()){
 		if (tag=="script") isscript = true;
 	        else isscript = false;
 
@@ -214,24 +216,28 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
 		     it->parseAttributes();
 		     string link_href;
 		     link_href.reserve(MAIOR_LINK+2);
-		     link_href = it->attribute("href").second;
-		     if (regex_search(link_href,html_expr)){
-		         memset(link_tmp,'\0',MAIOR_LINK+2);
-			 snprintf(link_tmp,MAIOR_LINK,"%.200s",link_href.c_str());
+		     link_href = curl.CNormalize(it->attribute("href").second);
+		     if (link_href.size()>0){
 
-			 //esse aqui vai ajudar a computar o conjunto Bu
-			 if (indice_links.find(link_tmp) != indice_links.end()){
-			     indice_links[link_tmp].push_back(idArvore);
-			 }
-			 Fu[idArvore-1] =  Fu[idArvore-1] + 1;
+		        //copiando os 800 primeiros caracteres
+		        memset(link_tmp,'\0',MAIOR_LINK+2);
+		        snprintf(link_tmp,MAIOR_LINK,"%.800s",link_href.c_str());
 
+		        //esse aqui vai ajudar a computar o conjunto Bu
+		        if (indice_links.find(link_tmp) != indice_links.end()){
+		           indice_links[link_tmp].push_back(idArvore);
+		        }
+		        Fu[idArvore-1] =  Fu[idArvore-1] + 1;
 		     }
+
 		}
 		else islink = false;
 	    }
 
-
-	     if (it->isComment()==0 && it->isTag()==0 && isscript==0){
+	    //por enquanto indexando anchor text junto com as palavras
+	    //pq esta dando tantas palavras? Se ele estava computando antes anchor text? 
+	    //conferir com um conjunto pequeno!
+	     if (!it->isComment() && !it->isTag() && !isscript){
 		 //if (islink) 
 		 //    cout<<"Anchor text: "<< it->text()<<" Tag: "<<tag<<endl;
 
@@ -257,65 +263,55 @@ void Colecao::ler(string dirEntrada,string nomeIndice){
 		          converteParaMinusculo_char(tmp);
 			  strcpy(palavra,tmp);
 			  //se der falha eh aqui!
-			  if (tmp!=NULL)
-			     free(tmp);
+			  if (tmp!=NULL) free(tmp);
 
 			  testepalavras++;
-			 // if (listaPalavras[ii] == "baixaki")
-			   //   cout<<"baixaki no doc "<<idArvore<<endl;
 		          if (vocabulario.find(palavra) == vocabulario.end()){
 
-			       buffer_chaves[contaPalavras] = new char[tamanho_palavra+1];
-		               memset(buffer_chaves[contaPalavras],'\0',tamanho_palavra+1);
-			       strncpy(buffer_chaves[contaPalavras],palavra,tamanho_palavra);
+				buffer_chaves[contaPalavras] = new char[tamanho_palavra+1];
+				memset(buffer_chaves[contaPalavras],'\0',tamanho_palavra+1);
+				strncpy(buffer_chaves[contaPalavras],palavra,tamanho_palavra);
 
-                             //if (idArvore==21)
-			     //cout << "Armazenando " << contaPalavras << " " << buffer_chaves[contaPalavras] << endl;
-
-	                      vocabulario[buffer_chaves[contaPalavras]] = contaPalavras;
-
-
-		              vocabulario_invertido[contaPalavras] = buffer_chaves[contaPalavras];
- 
-			      termos_pos[contaPalavras] = vector<int>();
-		              termos_pos[contaPalavras].push_back(palavraPos);
-
-			      ft.push_back(1);
-		              contaPalavras++;
-		         }else{
-
+				
+				vocabulario[buffer_chaves[contaPalavras]] = contaPalavras;
+			
+			
+			        vocabulario_invertido[contaPalavras] = buffer_chaves[contaPalavras];
+			 
+			        termos_pos[contaPalavras] = vector<int>();
+			        termos_pos[contaPalavras].push_back(palavraPos);
+			
+			        ft.push_back(1);
+			        contaPalavras++;
+			 }else{
+			
 			      if (termos_pos.find(vocabulario[palavra]) == termos_pos.end()){
-				   int idpalavra = vocabulario[palavra];
+			           int idpalavra = vocabulario[palavra];
 			           termos_pos[idpalavra] = vector<int>();
-				   //so contar frequency term quando for a primeira vez neste doc
-				   ft[idpalavra] = ft[idpalavra]+1;
+			           //so contar frequency term quando for a primeira vez neste doc
+			          ft[idpalavra] = ft[idpalavra]+1;
 			      }
-		              termos_pos[vocabulario[palavra]].push_back(palavraPos);
-		         }
-		      } 
-		     ii++;
-		     it_palavras++;
-	        }
-	       //cout << "Fim da leitura de listaPalavras" << endl;	  
-	    }  
-	
+			      termos_pos[vocabulario[palavra]].push_back(palavraPos);
+			 }
+		      }
+		      ii++;
+		      it_palavras++;
+		   }
+	       }//end-if !it->isComment() && !it->isTag() && !isscript
+			
     }
 
-    if (arquivotam.is_open()){
-        arquivotam << palavraPos;
-        arquivotam << endl;
-    }
-    if (palavra!=NULL)
-       delete[] palavra;
-    if (link_tmp!=NULL)
-	delete[] link_tmp;
-
-    //cout << "Terminou ler_arvore_dom" << endl;
-
+     if (arquivotam.is_open()){
+	  arquivotam << palavraPos;
+          arquivotam << endl;
+     }
+     if (palavra!=NULL) delete[] palavra;
+     if (link_tmp!=NULL) delete[] link_tmp;
+     
 }
 
-void Colecao::armazena_termos_doc(unordered_map<int,vector<int> >&  termos_pos,int doc){
-    //dado o codigo do item lexical armazena em disco o 
+void Colecao::armazena_termos_doc(unordered_map<int,vector<int> >& termos_pos,int doc){
+    //dado o codigo do item lexical armazena em disco o
     //lexical
    // cout << "armazena_termos_doc" << endl;
 
@@ -327,23 +323,20 @@ void Colecao::armazena_termos_doc(unordered_map<int,vector<int> >&  termos_pos,i
     //armazenando todos os docs!!os anteriores tbm!
     while(it_termo != termos_pos.end()){
 
-	vector<int>::iterator it_pos;
+        vector<int>::iterator it_pos;
 
-	for(it_pos=it_termo->second.begin();it_pos!=it_termo->second.end();it_pos++){
-	   if (it_pos!=it_termo->second.begin())
-		pos_gap = *(it_pos)-*(it_pos-1);
-	    else pos_gap = *it_pos;
-
+        for(it_pos=it_termo->second.begin();it_pos!=it_termo->second.end();it_pos++){
+            if (it_pos!=it_termo->second.begin())
+                pos_gap = *(it_pos)-*(it_pos-1);
+            else pos_gap = *it_pos;
 
             v.push_back(it_termo->first);
-	    v.push_back(doc);
+            v.push_back(doc);
             v.push_back(*it_pos);
-	    //cout << "==> " <<it_termo->first  << " " << doc << " "  << *it_pos <<" "<<testeuou<<endl;
 
-         testeuou++;
-	   //  vector<unsigned int>().swap(v);
-	}
-       ++it_termo;
+            testeuou++;
+        }
+        ++it_termo;
     }
 
     //TODO: estava dentro do laco de repeticao
@@ -358,13 +351,12 @@ void Colecao::armazena_termos_doc(unordered_map<int,vector<int> >&  termos_pos,i
     it_termo = termos_pos.begin();
 
     while(it_termo != termos_pos.end()){
-	it_termo->second.clear();
-	it_termo++;
+       it_termo->second.clear();
+       it_termo++;
     }
     termos_pos.clear();
 }
 
-    
 void Colecao::atualiza_vocabulario(int lex,unsigned long int pos){
     vocabulario[vocabulario_invertido[lex]] = pos;
 }
@@ -467,9 +459,9 @@ void Colecao::escreve_info_links(string dirEntrada,string nomeIndice){
 
 	    ii++;
 	}
-
-	arquivo.close();
+        arquivo.close();
 	arquivo_antigo.close();
+	/* 
         if (buffer_links !=NULL){
 	   int n = indice_links.size(); 
            for(int i=0;i<n;i++){
@@ -477,7 +469,7 @@ void Colecao::escreve_info_links(string dirEntrada,string nomeIndice){
 	          delete[] buffer_links[i];
 	   }
            delete[] buffer_links;
-        } 
+        } */
 	string nome_arquivo_antigo = nome_info_arquivos + ".tmp";
 
         char narquivo[100]; 

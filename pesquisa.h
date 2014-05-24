@@ -31,7 +31,7 @@ using namespace std;
 #define __PESQUISA_H_
 
 bool comparanota(resultado_pesquisa_t t1,resultado_pesquisa_t t2){
-    return t1.nota<t2.nota;
+    return t1.nota>t2.nota;
 }
 
 bool comparadocid(resultado_pesquisa_t t1,resultado_pesquisa_t t2){
@@ -42,7 +42,7 @@ bool comparadocid(resultado_pesquisa_t t1,resultado_pesquisa_t t2){
 class Pesquisa{
     static const string nome_arquivo_vocabulario;
     static const string nome_arquivo_indice;
-    static const string nome_tam_arquivos;
+    static const string nome_info_arquivos;
     static const string nome_dir_saida;
     vector<unsigned long int> posicoes_palavras;
     Le* leitura;

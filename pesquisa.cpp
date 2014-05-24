@@ -34,13 +34,13 @@
 #define VECTORCODIGO 2
 #define MIXCODIGO 3
 
-#define POTENCIA 2
+#define POTENCIA 3
 using namespace std;
 using namespace RICPNS;
 
 const string Pesquisa::nome_arquivo_vocabulario = "../voc_compacta.txt";
 const string Pesquisa::nome_arquivo_indice = "../index_compacta.bin";
-const string Pesquisa::nome_info_arquivos = "../info_arquivos.txt";
+const string Pesquisa::nome_info_arquivos = "../info_arquivos_sig.txt";
 const string Pesquisa::nome_dir_saida = "saida/";
 
 Pesquisa::Pesquisa(bool compacta,int rankopt){
@@ -61,15 +61,15 @@ Pesquisa::Pesquisa(bool compacta,int rankopt){
     }
 
     if (rankopt == BM25CODIGO){
-	rank = new BM25(nome_info_arquivos,constroi_wd,POTENCIA);
+	rank = new BM25(nome_info_arquivos,constroi_wd,true,POTENCIA);
     }
 
     if (rankopt == VECTORCODIGO){
-	rank = new Vetorial(nome_info_arquivos,constroi_wd,POTENCIA);
+	rank = new Vetorial(nome_info_arquivos,constroi_wd,true,POTENCIA);
     }
 
     if (rankopt == MIXCODIGO){
-	rank = new MIX(nome_info_arquivos,constroi_wd,POTENCIA);
+	rank = new MIX(nome_info_arquivos,constroi_wd,true,POTENCIA);
     }
 
     t = clock();
@@ -231,11 +231,13 @@ void Pesquisa::imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,s
     //para imprimir aqueles do resultado
     //CollectionReader* leitor = new CollectionReader(dir_entrada,nome_indice);
     ifstream indice_links(nome_indice);
+    cout<<"Nome indice: "<< nome_indice<<endl;
     Document doc;
     unordered_map<unsigned int,string> listaLinks;
     queue<unsigned int> docid;
 
-    ofstream arquivo_saida(nome_dir_saida+termos_pesquisa);
+   // cout<<"Imprimir "<<resultado.size()<<" documentos "<<endl;
+    //ofstream arquivo_saida(nome_dir_saida+termos_pesquisa);
 
     //ordenar por id
     sort(resultado.begin(),resultado.end(),comparadocid);
@@ -266,7 +268,7 @@ void Pesquisa::imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,s
 	if (docid.front() == i){
 	    listaLinks[docid.front()].reserve(link.size());
 	    listaLinks[docid.front()] = link;
-	    //cout<<"==> "<<link<<endl;
+	    //cout<<"==> "<<link<<" "<<i<<endl;
 	    //cout<<"--> "<<listaLinks[docid.front()]<<endl;
 	    docid.pop();
 	   //cout << "DOCUMENTO " << i << endl;
@@ -279,17 +281,18 @@ void Pesquisa::imprime_docs_resultados(vector<resultado_pesquisa_t>  resultado,s
 	++i;
     }
 
+
     sort(resultado.begin(),resultado.end(),comparanota); 
     it_resultado = resultado.begin();
     it_resultado_fim = resultado.end();
-
+    vector<double> pr = rank->pega_pr();
     while(it_resultado!=it_resultado_fim){
-	arquivo_saida<<listaLinks[it_resultado->docid]<<endl;
-	//cout<<"LInk: "<< listaLinks[it_resultado->docid]<<" Nota "<<it_resultado->nota<<endl;
+	//arquivo_saida<<listaLinks[it_resultado->docid]<<endl;
+	cout<<"LInk: "<< listaLinks[it_resultado->docid]<<" Nota "<<it_resultado->nota<<"  "<<(945642*pr[it_resultado->docid-1])<<endl;
 	it_resultado++;
     }
     indice_links.close();
-    arquivo_saida.close();
+    //arquivo_saida.close();
 }
  
 

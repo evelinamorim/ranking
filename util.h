@@ -29,7 +29,7 @@
 #define __UTIL_H_
 
 #define MAIOR_PALAVRA 20
-#define MAIOR_LINK 200
+#define MAIOR_LINK 800
 #define TAM_VOC 20000000
 //TODO: depois mudar este tamanho. No momento eh soh para teste
 #define TAMANHO_RUN 10000000
@@ -42,6 +42,8 @@
 #define D_FACTOR 0.85
 //constante definida como numero de iteracoes que o pagerank deve executar
 #define ITER_PR 50
+
+#define ALPHA 0.85
 
 using namespace std;
 
