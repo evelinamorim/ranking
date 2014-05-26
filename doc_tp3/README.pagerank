@@ -1,0 +1,89 @@
+autora: Evelin Amorim
+
+=== CONFIGURAR === 
+
+Para a construção do pagerank foi necessárias algumas poucas modificações 
+na construção do índice. Portanto antes de executar a pesquisa é necessária 
+a execução da construção do índice. Estas modificações podem ser relativas 
+a arquivos criados ou podem ser relativos a lógica do algoritmo de 
+indexação.
+
+As modificações implementadas no índice relativas a arquivos são:
+
+1) Criação de um arquivo que armazena informações de cada documento, a saber: 
+tamanho em palavras e pagerank. Este arquivo por padrão se chama info_arquivos.txt.
+
+2) Ao vocabulário foi adicionada a frequência do termo na coleção.
+
+As modificações relativas a implementação estão relacionadas com a construção 
+do pagerank. Como a catalogação de links e posteriormente o cálculo do pagerank.  
+Para a catalogação de links pensei em normalizar as URLs a fim de obter um 
+resultado com mais acurácia. A normalização de links foi feita utilizando 
+a biblioteca oneurl (https://github.com/nuoline/oneurl). Logo 
+no pacote deste trabalho existe uma pasta com o código fonte do oneurl. 
+A compilação da biblioteca oneurl exige a instalação do icu4c, cujo download 
+pode ser feito no site http://site.icu-project.org/download. No ambiente linux e 
+MacOSX é possível fazer a instalação do icu4c via gerenciador de pacotes. A 
+compilação do oneurl será abordado na próxima seção.
+
+O sistema proposto é compilado através de Makefile. A primeira parte da configuração 
+deve ser feita no Makefile do diretório principal do sistema. No início do Makefile 
+existe um conjunto de variáveis que deve ser modificado conforme os diretórios 
+do usuário. Segue uma lista de tais variáveis e a explicação de cada uma.
+
+   * ricode: Diretório onde estão armazenados os códigos objetos da biblioteca CollectionReader;
+   * urlcode: Diretório com os arquivos de cabeçalho da biblioteca oneurl;
+   * ridata: Diretório onde se encontra o arquivo com a lista de documentos a serem indexados;
+   * riindex: nome do arquivo que contém os links dos documentos a serem processados para o índice;
+
+A segunda parte da configuração se encontra dentro no início do arquivo colecao.cpp. A configuração 
+em colecao.cpp engloba os nomes dos arquivos a serem gerados. Seguem as declarações 
+das variáveis como no código fonte.
+
+   * const string Colecao::nome_arquivo_indice="index_compacta.bin";
+   * const string Colecao::nome_arquivo_vocabulario="voc_compacta.txt";
+   * const string Colecao::nome_info_arquivos="info_arquivos.txt";
+
+A terceira parte da configuração se encontra no início do arquivo pesquisa.cpp e assim como 
+a segunda parte da configuração armazena os nomes dos arquivos a serem gerados ou a serem lidos.
+Seguem as declarações das variáveis como no código fonte.
+ 
+   * const string Pesquisa::nome_arquivo_vocabulario = "voc_compacta.txt";
+   * const string Pesquisa::nome_arquivo_indice = "index_compacta.bin";
+   * const string Pesquisa::nome_info_arquivos = "info_arquivos.txt"; 
+   * const string Pesquisa::nome_dir_saida = "saida/"; //guarda resultados da pesquisa
+
+=== COMPILAR ===
+
+Caso a configuração tenha sido feita de forma correta a compilação do sistema 
+segue como próximo passo. As subetapas da compilação da compilação são: compilação do oneurl, 
+compilação do índice e compilação da pesquisa.
+
+== Oneurl ==
+
+A compilação do oneurl é feita através da sequência de comandos a seguir:
+
+cd oneurl-master/ && make && cd ..
+
+Caso aconteça algum problema é possível que esteja relacionada com a biblioteca icu4c, pois 
+o pacote do oneurl abrange a biblioteca icu4c já compilada. Isso não é recomendado visto que 
+a instalação pode ocorrer em uma arquitetura diferente da arquitetura onde a icu4c foi 
+compilada. Nesta situação basta modificar o Makefile da pasta oneurl-master para 
+apontar para o icu4c que foi compilado nativamente em sua máquina.
+
+== Índice ==
+
+A compilação do índice é feita através do comando: 
+
+make index
+
+Assumindo que os código objetos do CollectionReader já existam, caso contrário 
+é necessário executar make ziplib antes de make index.
+
+== Pesquisa ==
+
+A compilação da pesquisa é feita através do comando:
+
+make pesquisa
+
+=== TESTAR ===

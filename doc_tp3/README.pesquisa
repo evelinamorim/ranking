@@ -1,0 +1,33 @@
+CONFIGURAÇÃO
+Existem dois parâmetros importantes a configurar na pesquisa: a computação dos 
+pesos dos documentos e o tipo de ranking que se deseja retornar na pesquisa.
+
+Para configurar se você quer ou não computador o arquivo dos pesos, existe 
+uma variável booleana no construtor de pesquisa chamada constroi_wd 
+que caso seja true o arquivo de pesos é calculado. Em media a computação dos 
+pesos leva 1900s. Por padrão esta variável está inicializado como false.
+
+No corpo da função main do arquivo pesquisa.cpp existe a variável 
+rankopt que guarda a opção de ranking do usuário. No próprio arquivo foram 
+definidas três constantes a seguir que representam os rankings:
+* #define BM25CODIGO 1
+* #define VECTORCODIGO 2
+* #define MIXCODIGO 3
+
+Assim basta atribuir uma das constantes definidas em rankopt para escolher 
+o ranking desejado.
+
+COMPILAÇÃO
+
+A compilação do sistema pesquisa está dentro do Makefile. Sendo necessário realizar 
+apenas o passo:
+
+make pesquisa
+
+Para computar o teste com arquivo consultas.txt, basta digitar:
+
+make teste.
+
+É necessário a existência de um diretório chamado saida que guarda os
+links resultantes da pesquisa.
+

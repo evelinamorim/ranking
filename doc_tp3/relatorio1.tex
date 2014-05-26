@@ -1,0 +1,30 @@
+\documentclass[a4paper]{article}
+%\usepackage[utf8]{inputenc}
+\usepackage[latin1]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+%\usepackage{ntheorem}
+\usepackage[pdftex]{graphicx}
+%\usepackage{subfigure}
+\usepackage[top=3cm, bottom=2cm, left=3cm, right=2cm]{geometry} 
+\usepackage{enumerate} 
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{url}
+\usepackage{subcaption}
+\usepackage{graphicx}
+\usepackage[space]{grffile}
+
+\usepackage{etoolbox}
+\makeatletter
+\patchcmd{\Ginclude@eps}{"#1"}{#1}{ }{}
+\makeatother
+
+\newcommand{\BigO}[1]{\ensuremath{\operatorname{O}\bigl(#1\bigr)}}
+
+\begin{document}
+
+%\bibliographystyle{alpha} % Choose Phys. Rev. style for bibliography
+
+
+\title{Trabalho Pr

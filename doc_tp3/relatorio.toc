@@ -1,0 +1,17 @@
+\select@language {brazil}
+\contentsline {section}{\numberline {1}Introdu\IeC {\c c}\IeC {\~a}o}{1}
+\contentsline {section}{\numberline {2}Metodologia}{2}
+\contentsline {subsection}{\numberline {2.1}Medidas de \emph {Ranking}}{2}
+\contentsline {subsection}{\numberline {2.2}Pagerank}{2}
+\contentsline {subsection}{\numberline {2.3}Implementa\IeC {\c c}\IeC {\~a}o}{3}
+\contentsline {subsubsection}{\numberline {2.3.1}\IeC {\'I}ndice}{3}
+\contentsline {subsubsection}{\numberline {2.3.2}\emph {Ranking}}{6}
+\contentsline {section}{\numberline {3}Resultados e Avalia\IeC {\c c}\IeC {\~a}o}{6}
+\contentsline {section}{\numberline {4}Conclus\IeC {\~a}o}{7}
+\contentsline {section}{\numberline {A}Manual do Sistema}{7}
+\contentsline {subsection}{\numberline {A.1}Configurar}{7}
+\contentsline {subsection}{\numberline {A.2}Compilar}{8}
+\contentsline {subsubsection}{\numberline {A.2.1}Oneurl}{8}
+\contentsline {subsubsection}{\numberline {A.2.2}\IeC {\'I}ndice}{8}
+\contentsline {subsubsection}{\numberline {A.2.3}Pesquisa}{8}
+\contentsline {subsection}{\numberline {A.3}Testar}{8}

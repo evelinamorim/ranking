@@ -1,0 +1,28 @@
+\begin{thebibliography}{1}
+
+\bibitem{cplusplus}
+C++ reference
+  \url{http://www.cplusplus.com/reference/unordered_map/unordered_map/}, 2000.
+
+\bibitem{Baeza1999}
+Ricardo~A. Baeza-Yates and Berthier Ribeiro-Neto.
+\newblock {\em Modern Information Retrieval}.
+\newblock Addison-Wesley Longman Publishing Co., Inc., Boston, MA, USA, 1999.
+
+\bibitem{powermean}
+David~W. Cantrell and Eric~W. Weisstein.
+\newblock ``power mean.'' from mathworld--a wolfram web resource.
+  \url{http://mathworld.wolfram.com/PowerMean.html}.
+
+\bibitem{page1999pagerank}
+Lawrence Page, Sergey Brin, Rajeev Motwani, and Terry Winograd.
+\newblock The pagerank citation ranking: Bringing order to the web.
+\newblock 1999.
+
+\bibitem{zaragoza2004microsoft}
+Hugo Zaragoza, Nick Craswell, Michael~J Taylor, Suchi Saria, and Stephen~E
+  Robertson.
+\newblock Microsoft cambridge at trec 13: Web and hard tracks.
+\newblock In {\em TREC}, volume~4, pages 1--1. Citeseer, 2004.
+
+\end{thebibliography}
